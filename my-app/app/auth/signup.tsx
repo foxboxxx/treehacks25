@@ -27,18 +27,21 @@ export default function SignUp() {
                     <TextInput
                         style={styles.input}
                         placeholder="First Name"
+                        placeholderTextColor="#afafaf"
                         value={firstName}
                         onChangeText={setFirstName}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Last Name"
+                        placeholderTextColor="#afafaf"
                         value={lastName}
                         onChangeText={setLastName}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Age"
+                        placeholderTextColor="#afafaf"
                         value={age}
                         onChangeText={setAge}
                         keyboardType="numeric"
@@ -46,18 +49,21 @@ export default function SignUp() {
                     <TextInput
                         style={styles.input}
                         placeholder="City"
+                        placeholderTextColor="#afafaf"
                         value={city}
                         onChangeText={setCity}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="State"
+                        placeholderTextColor="#afafaf"
                         value={state}
                         onChangeText={setState}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
+                        placeholderTextColor="#afafaf"
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
@@ -66,6 +72,7 @@ export default function SignUp() {
                     <TextInput
                         style={styles.input}
                         placeholder="Password"
+                        placeholderTextColor="#afafaf"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry

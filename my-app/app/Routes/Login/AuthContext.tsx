@@ -42,6 +42,7 @@ export default function SignIn() {
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
+                        placeholderTextColor="#afafaf"
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
@@ -50,6 +51,7 @@ export default function SignIn() {
                     <TextInput
                         style={styles.input}
                         placeholder="Password"
+                        placeholderTextColor="#afafaf"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
