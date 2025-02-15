@@ -14,6 +14,8 @@ import {
     doc,
     updateDoc,
     setDoc,
+    collection,
+    arrayUnion
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -64,6 +66,68 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
         return user;
     } catch (err) {
         console.error("Error during registration:", err);
+        throw err;
+    }
+};
+
+export const createEvent = async (eventData) => {
+    try {
+        const eventRef = doc(collection(db, "events"));
+        await setDoc(eventRef, {
+            id: eventRef.id,
+            title: eventData.title,
+            description: eventData.description,
+            date: eventData.date,
+            time: eventData.time,
+            location: eventData.location,
+            createdAt: new Date(),
+            createdBy: auth.currentUser.uid
+        });
+        return eventRef.id;
+    } catch (err) {
+        console.error("Error creating event:", err);
+        throw err;
+    }
+};
+
+export const addEventToUser = async (userId, eventId) => {
+    try {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, {
+            events: arrayUnion(eventId)
+        });
+    } catch (err) {
+        console.error("Error adding event to user:", err);
+        throw err;
+    }
+};
+
+export const getUserEvents = async (userId) => {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        const userData = userDoc.data();
+        const eventIds = userData.events || [];
+        
+        const events = await Promise.all(
+            eventIds.map(async (eventId) => {
+                const eventDoc = await getDoc(doc(db, "events", eventId));
+                return { id: eventDoc.id, ...eventDoc.data() };
+            })
+        );
+        
+        return events;
+    } catch (err) {
+        console.error("Error getting user events:", err);
+        throw err;
+    }
+};
+
+export const getUserData = async (userId) => {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        return userDoc.data();
+    } catch (err) {
+        console.error("Error getting user data:", err);
         throw err;
     }
 };
