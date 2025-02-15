@@ -6,6 +6,7 @@ import { Abel_400Regular } from '@expo-google-fonts/abel';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { CgProfile } from "react-icons/cg";
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Fonts } from '@/constants/Fonts';
@@ -50,7 +51,6 @@ export default function TabLayout() {
           right: 0,
         },
         tabBarLabelStyle: {
-          ...Fonts.abel,
           fontSize: 14,
           marginTop: 5,
         },
@@ -58,22 +58,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          // title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => <IconSymbol size={28} name={focused ? 'house.fill' : 'house'} color={color} />,
         }}
       />
       <Tabs.Screen
         name="swipe"
         options={{
-          // title: 'Vuzz',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="hand.draw.fill" color={color} />,
+          title: 'Vuzz',
+          tabBarIcon: ({ color, focused }) => <IconSymbol size={28} name={focused ? 'hand.draw.fill' : 'hand.draw'} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="messages"
         options={{
-          // title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Messages',
+          tabBarIcon: ({ color, focused }) => <IconSymbol size={28} name={focused ? 'message.fill' : 'message'} color={color} />,
         }}
       />
     </Tabs>

@@ -25,14 +25,14 @@ const cardData = [
   },
   {
     id: 4,
-    imageUrl: 'https://picsum.photos/400/440',
-    title: 'Third Carddada',
+    imageUrl: 'https://picsum.photos/400/128',
+    title: '4 Carddada',
     description: 'third card example'
   },
   {
     id: 5,
-    imageUrl: 'https://picsum.photos/400/440',
-    title: 'Third Cardwdw',
+    imageUrl: 'https://picsum.photos/400/893',
+    title: '5 Cardwdw',
     description: 'third cadsadard example'
   }
 ];

@@ -7,13 +7,13 @@ import { Fonts } from '@/constants/Fonts';
 export default function Homescreen() {
   return (
     <View style={styles.container}>
-      <Text>(INSERT NAME HERE))</Text>
+      {/* <Text>(INSERT NAME HERE))</Text>
       <Button 
       title="CLICK" 
       onPress={() => console.log('Button Pressed!')} 
       style={{ backgroundColor: '#B3D8A8', padding: 10, borderRadius: 20 }} 
       textStyle={{ ...Fonts.abel, fontSize: 20, color: 'black' }} 
-      />
+      /> */}
       <StatusBar style='auto' />
     </View>
   );
