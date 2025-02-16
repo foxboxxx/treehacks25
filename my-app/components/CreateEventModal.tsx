@@ -71,11 +71,9 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
             alert('Please select at least one tag');
             return;
         }
+
         try {
             const eventData = {
-
-
-            await createEvent({
                 title,
                 description,
                 date,
@@ -91,7 +89,6 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
             };
 
             await createEvent(eventData);
-            });
             
             onEventCreated();
             onClose();
@@ -261,115 +258,118 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                                         selectedDayTextColor="#FFFFFF"
                                         todayBackgroundColor="#f2f2f2"
                                         width={320}
-
-                                <View style={styles.timePickerContainer}>
-                                    <TouchableOpacity 
-                                        style={styles.input}
-                                        onPress={() => setShowTimeDropdown(!showTimeDropdown)}
-                                    >
-                                        <Text style={[
-                                            styles.dateText,
-                                            !time && styles.placeholderText
-                                        ]}>
-                                            {time || 'Select Time'}
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {showTimeDropdown && (
-                                        <View style={styles.timeDropdownContainer}>
-                                            <View style={styles.timeInputsRow}>
-                                                <View style={styles.timeInputContainer}>
-                                                    <TextInput
-                                                        style={styles.timeInput}
-                                                        placeholder="HH"
-                                                        value={hour}
-                                                        onChangeText={(text) => {
-                                                            const num = parseInt(text);
-                                                            if ((num >= 1 && num <= 12) || text === '') {
-                                                                setHour(text);
-                                                            }
-                                                        }}
-                                                        keyboardType="number-pad"
-                                                        maxLength={2}
-                                                    />
-                                                    <Text style={styles.timeLabel}>Hour</Text>
-                                                </View>
-
-                                                <View style={styles.timeInputContainer}>
-                                                    <TextInput
-                                                        style={styles.timeInput}
-                                                        placeholder="MM"
-                                                        value={minute}
-                                                        onChangeText={(text) => {
-                                                            const num = parseInt(text);
-                                                            if ((num >= 0 && num <= 59) || text === '') {
-                                                                setMinute(text);
-                                                            }
-                                                        }}
-                                                        keyboardType="number-pad"
-                                                        maxLength={2}
-                                                    />
-                                                    <Text style={styles.timeLabel}>Minute</Text>
-                                                </View>
-
-                                                <View style={styles.timeInputContainer}>
-                                                    <TouchableOpacity
-                                                        style={styles.periodSelector}
-                                                        onPress={() => setPeriod(period === 'AM' ? 'PM' : 'AM')}
-                                                    >
-                                                        <Text style={styles.periodText}>{period}</Text>
-                                                    </TouchableOpacity>
-                                                    <Text style={styles.timeLabel}>AM/PM</Text>
-                                                </View>
-                                            </View>
-                                            
-                                            <TouchableOpacity 
-                                                style={styles.confirmTimeButton}
-                                                onPress={() => {
-                                                    handleTimeUpdate(hour, minute, period);
-                                                    setShowTimeDropdown(false);
-                                                }}
-                                            >
-                                                <Text style={styles.confirmTimeText}>Confirm Time</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
+                                    />
                                 </View>
+                            )}
 
+                            <View style={styles.timePickerContainer}>
                                 <TouchableOpacity 
                                     style={styles.input}
-                                    onPress={() => setShowCalendar(!showCalendar)}
+                                    onPress={() => setShowTimeDropdown(!showTimeDropdown)}
                                 >
                                     <Text style={[
                                         styles.dateText,
-                                        !date && styles.placeholderText
+                                        !time && styles.placeholderText
                                     ]}>
-                                        {date || 'Select Date'}
+                                        {time || 'Select Time'}
                                     </Text>
                                 </TouchableOpacity>
-                            </View>
 
-                            <View style={styles.locationSection}>
-                                <Text style={styles.label}>Location</Text>
-                                <LocationPicker 
-                                    onLocationSelect={handleLocationSelect}
-                                    initialLocation={location}
-                                />
-                                {location && (
-                                    <Text style={styles.selectedLocation}>
-                                        Selected: {location.city}, {location.state}
-                                    </Text>
+                                {showTimeDropdown && (
+                                    <View style={styles.timeDropdownContainer}>
+                                        <View style={styles.timeInputsRow}>
+                                            <View style={styles.timeInputContainer}>
+                                                <TextInput
+                                                    style={styles.timeInput}
+                                                    placeholder="HH"
+                                                    value={hour}
+                                                    onChangeText={(text) => {
+                                                        const num = parseInt(text);
+                                                        if ((num >= 1 && num <= 12) || text === '') {
+                                                            setHour(text);
+                                                        }
+                                                    }}
+                                                    keyboardType="number-pad"
+                                                    maxLength={2}
+                                                />
+                                                <Text style={styles.timeLabel}>Hour</Text>
+                                            </View>
+
+                                            <View style={styles.timeInputContainer}>
+                                                <TextInput
+                                                    style={styles.timeInput}
+                                                    placeholder="MM"
+                                                    value={minute}
+                                                    onChangeText={(text) => {
+                                                        const num = parseInt(text);
+                                                        if ((num >= 0 && num <= 59) || text === '') {
+                                                            setMinute(text);
+                                                        }
+                                                    }}
+                                                    keyboardType="number-pad"
+                                                    maxLength={2}
+                                                />
+                                                <Text style={styles.timeLabel}>Minute</Text>
+                                            </View>
+
+                                            <View style={styles.timeInputContainer}>
+                                                <TouchableOpacity
+                                                    style={styles.periodSelector}
+                                                    onPress={() => setPeriod(period === 'AM' ? 'PM' : 'AM')}
+                                                >
+                                                    <Text style={styles.periodText}>{period}</Text>
+                                                </TouchableOpacity>
+                                                <Text style={styles.timeLabel}>AM/PM</Text>
+                                            </View>
+                                        </View>
+                                        
+                                        <TouchableOpacity 
+                                            style={styles.confirmTimeButton}
+                                            onPress={() => {
+                                                handleTimeUpdate(hour, minute, period);
+                                                setShowTimeDropdown(false);
+                                            }}
+                                        >
+                                            <Text style={styles.confirmTimeText}>Confirm Time</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 )}
                             </View>
 
-                            <View style={styles.buttonContainer}>
-                                <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                                    <Text style={styles.buttonText}>Create Event</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-                                    <Text style={styles.buttonText}>Cancel</Text>
-                                </TouchableOpacity>
-                            </View>
+                            <TouchableOpacity 
+                                style={styles.input}
+                                onPress={() => setShowCalendar(!showCalendar)}
+                            >
+                                <Text style={[
+                                    styles.dateText,
+                                    !date && styles.placeholderText
+                                ]}>
+                                    {date || 'Select Date'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.locationSection}>
+                            <Text style={styles.label}>Location</Text>
+                            <LocationPicker 
+                                onLocationSelect={handleLocationSelect}
+                                initialLocation={location}
+                            />
+                            {location && (
+                                <Text style={styles.selectedLocation}>
+                                    Selected: {location.city}, {location.state}
+                                </Text>
+                            )}
+                        </View>
+
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                                <Text style={styles.buttonText}>Create Event</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
+                                <Text style={styles.buttonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
                         </View>
                     </ScrollView>
                 </View>
