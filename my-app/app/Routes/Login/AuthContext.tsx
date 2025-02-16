@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { registerWithEmailAndPassword, logInWithEmailAndPassword } from "../../utils/firebase/firebase.utils";
 import Logo from '../../../components/Logo';
+import { useEffect } from "react";
+import { auth } from "../../utils/firebase/firebase.utils";
 
 type AuthContextType = {
     email: string;
@@ -141,6 +143,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             console.error("Sign in error:", error);
         }
     };
+
 
     return (
         <AuthContext.Provider value={{

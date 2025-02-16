@@ -23,6 +23,7 @@ import { auth } from '@/app/utils/firebase/firebase.utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/app/utils/firebase/firebase.utils';
 import { getUserData } from '@/app/utils/firebase/firebase.utils';
+import { router } from 'expo-router';
 
 interface PreferenceItem {
   id: string;
@@ -373,6 +374,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 100,
   },
   header: {
     backgroundColor: '#B3D8A8',
