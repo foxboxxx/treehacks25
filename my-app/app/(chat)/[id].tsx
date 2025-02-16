@@ -169,6 +169,9 @@ const styles = StyleSheet.create({
     messageList: {
         flex: 1,
         padding: 10,
+        paddingBottom: 50,
+        height: '100%',
+        position: 'relative',
     },
     messageContainer: {
         margin: 8,
@@ -195,11 +198,17 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     inputContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         flexDirection: 'row',
         padding: 10,
+        paddingBottom: 28,
         borderTopWidth: 1,
         borderTopColor: '#eee',
         backgroundColor: '#fff',
+        zIndex: 1,
     },
     input: {
         flex: 1,
