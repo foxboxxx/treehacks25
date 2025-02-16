@@ -111,7 +111,9 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             city: userData.city,
             state: userData.state,
             createdAt: new Date(),
-            items: []
+            items: [],
+            likedEvents: new Array(),
+            dislikedEvents: new Array()
         };
         
         await setDoc(doc(db, "users", user.uid), userDocData);

@@ -20,6 +20,8 @@ type AuthContextType = {
     setState: (state: string) => void;
     username: string;
     setUsername: (username: string) => void;
+    // likedEvents: string[];
+    // setLikedEvents: (events: string[]) => void;
     handleSignIn: () => Promise<void>;
     handleSignUp: () => Promise<void>;
     navigateToSignUp: () => void;
@@ -89,8 +91,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [age, setAge] = useState("");
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
-    const [username, setUsername] = useState("");
-
+    const [username, setUsername] = useState("");  
+    // const [likedEvents, setLikedEvents] = useState<string[]>([]);
+    
     const navigateToSignUp = () => {
         router.push("../auth/signup");
     };
@@ -101,16 +104,20 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             return;
         }
         try {
-            const user = await registerWithEmailAndPassword(email, password, {
+            const userData = {
                 firstName,
                 lastName,
                 age,
                 city,
                 state,
-                username
-            });
+                username,
+                // likedEvents: [],
+                createdAt: new Date().toISOString(),
+            };
+
+            const user = await registerWithEmailAndPassword(email, password, userData);
             if (user) {
-                console.log("Navigating to tabs...");
+                console.log("User data:", userData);
                 router.replace("/(tabs)");
             }
         } catch (error: any) {
@@ -154,6 +161,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setState,
             username,
             setUsername,
+            // likedEvents,
+            // setLikedEvents,
             handleSignIn,
             handleSignUp,
             navigateToSignUp

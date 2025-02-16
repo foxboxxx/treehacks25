@@ -223,7 +223,20 @@ const SwipeCard = forwardRef<any, CardProps>(({
 
             <Animated.View style={[styles.card, styles.backCard, backAnimatedStyle]}>
               <View style={styles.backContent}>
-                <Text style={styles.backText}>The event "{title}" is on {date} at {location}! It's id is {id}</Text>
+                <Text style={styles.backTitle}>{title}</Text>
+                <View style={styles.backDetails}>
+                  <Text style={styles.backLabel}>Date & Time:</Text>
+                  <Text style={styles.backText}>{date}</Text>
+                  
+                  <Text style={styles.backLabel}>Location:</Text>
+                  <Text style={styles.backText}>{location}</Text>
+                  
+                  <Text style={styles.backLabel}>Description:</Text>
+                  <Text style={styles.backText}>{description}</Text>
+                  
+                  <Text style={styles.backLabel}>Event ID:</Text>
+                  <Text style={styles.backText}>{id}</Text>
+                </View>
               </View>
             </Animated.View>
           </Pressable>
@@ -258,20 +271,35 @@ const styles = StyleSheet.create({
   },
   backCard: {
     backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
   },
   backContent: {
     padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_HEIGHT * 0.7,
+    width: '100%',
+    height: '100%',
+  },
+  backTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backDetails: {
+    flex: 1,
+    gap: 12,
+  },
+  backLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 4,
   },
   backText: {
-    fontSize: 20,
+    fontSize: 16,
     color: '#333',
-    textAlign: 'center',
+    lineHeight: 22,
   },
   image: {
     width: '100%',
