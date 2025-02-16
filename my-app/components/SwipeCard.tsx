@@ -30,6 +30,7 @@ interface CardProps {
   onSwipeRight?: () => void;
   isLocked: boolean;
   style?: any;
+  tags: string[];
 }
 
 const SwipeCard = forwardRef<any, CardProps>(({
@@ -43,6 +44,7 @@ const SwipeCard = forwardRef<any, CardProps>(({
   onSwipeLeft,
   onSwipeRight,
   style,
+  tags,
 }, ref) => {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -233,6 +235,15 @@ const SwipeCard = forwardRef<any, CardProps>(({
                   
                   <Text style={styles.backLabel}>Description:</Text>
                   <Text style={styles.backText}>{description}</Text>
+
+                  <Text style={styles.backLabel}>Tags:</Text>
+                  <View style={styles.tagsContainer}>
+                    {tags.map((tag, index) => (
+                      <View key={index} style={styles.tag}>
+                        <Text style={styles.tagText}>#{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
                   
                   <Text style={styles.backLabel}>Event ID:</Text>
                   <Text style={styles.backText}>{id}</Text>
@@ -331,5 +342,22 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tag: {
+    backgroundColor: '#3D8D7A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  tagText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

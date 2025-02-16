@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import SwipeCard from '@/components/SwipeCard';
 import Button from '@/components/Button';
 import { useState, useEffect } from 'react';
@@ -16,6 +16,17 @@ interface EventLocation {
     state: string;
     latitude: number;
     longitude: number;
+}
+
+// Add this interface at the top with other interfaces
+interface EventData {
+    id: string;
+    imageUrl: string;
+    title: string;
+    description: string;
+    date: string;
+    location: string | EventLocation;
+    tags: string[];
 }
 
 const cardData = [
@@ -70,61 +81,78 @@ const formatLocation = (location: string | EventLocation) => {
 };
 
 export default function SwipeScreen() {
-  const [cardData, setCardData] = useState<Event[]>([]);
+  const [cardData, setCardData] = useState<EventData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [locationFilterEnabled, setLocationFilterEnabled] = useState(true);
+  const [tagFilterEnabled, setTagFilterEnabled] = useState(true);
   const navigation = useNavigation();
 
   const fetchEvents = async () => {
     try {
-      // Clear existing cards first
       setCardData([]);
       
-      // Get user's liked/disliked events
       const userId = auth.currentUser?.uid;
       const userData = await getUserData(userId);
       const likedEvents = userData?.likedEvents || [];
       const dislikedEvents = userData?.dislikedEvents || [];
       const interactedEvents = [...likedEvents, ...dislikedEvents];
+      const userTags = userData?.tags || [];
+      const userLat = userData?.latitude || 0;
+      const userLong = userData?.longitude || 0;
 
-      console.log('User interacted events:', interactedEvents);
+      console.log('Filters:', {
+        location: locationFilterEnabled ? 'ON (only nearby)' : 'OFF (all locations)',
+        tags: tagFilterEnabled ? 'ON (only matching)' : 'OFF (all tags)'
+      });
 
-      // Fetch and filter events
       const eventsCollectionRef = collection(db as Firestore, 'events');
       const querySnapshot = await getDocs(eventsCollectionRef);
       
       const newEvents = querySnapshot.docs
-        .filter(doc => !interactedEvents.includes(doc.id))
+        .filter(doc => {
+          const eventData = doc.data();
+          
+          if (interactedEvents.includes(doc.id)) return false;
+
+          if (locationFilterEnabled) {
+            const eventLat = eventData.latitude || 0;
+            const eventLong = eventData.longitude || 0;
+            const latDiff = Math.abs(eventLat - userLat);
+            const longDiff = Math.abs(eventLong - userLong);
+            
+            if (latDiff > 0.72 || longDiff > 0.72) return false;
+          }
+
+          if (tagFilterEnabled) {
+            const eventTags = eventData.tags || [];
+            const hasMatchingTags = eventTags.some((tag: string) => userTags.includes(tag));
+            if (!hasMatchingTags) return false;
+          }
+          
+          return true;
+        })
         .map(doc => ({
           id: doc.id,
           imageUrl: doc.data().imageUrl,
           title: doc.data().title,
           description: doc.data().description,
           date: doc.data().date,
-          location: doc.data().location
+          location: doc.data().location,
+          tags: doc.data().tags || []
         }));
 
-      console.log('New unseen events:', newEvents);
       setCardData(newEvents);
-      setCurrentIndex(0); // Reset index when new data is loaded
+      setCurrentIndex(0);
     } catch (error) {
       console.error('Error fetching events:', error);
     }
   };
 
-  // Initial load
+  // Remove the auto-refresh on focus
   useEffect(() => {
+    // Initial fetch only
     fetchEvents();
   }, []);
-
-  // Refresh on focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Swipe screen focused, refreshing events...');
-      fetchEvents();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
 
   const handleSwipeLeft = async () => {
     if (currentIndex < cardData.length) {
@@ -174,24 +202,81 @@ export default function SwipeScreen() {
     }
   };
 
+  // Update the "no more cards" view with styled button
   if (currentIndex >= cardData.length) {
     return (
       <View style={styles.container}>
         <Text style={styles.endMessage}>Come back soon for more opportunities!</Text>
-        <Button title="Refresh List" onPress={fetchEvents} />
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={fetchEvents}
+          >
+            <Text style={styles.refreshText}>Refresh List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterButton, locationFilterEnabled && styles.filterButtonEnabled]}
+            onPress={() => {
+              setLocationFilterEnabled(!locationFilterEnabled);
+              fetchEvents();
+            }}
+          >
+            <Text style={styles.filterText}>
+              Location: {locationFilterEnabled ? 'ON' : 'OFF'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterButton, tagFilterEnabled && styles.filterButtonEnabled]}
+            onPress={() => {
+              setTagFilterEnabled(!tagFilterEnabled);
+              fetchEvents();
+            }}
+          >
+            <Text style={styles.filterText}>
+              Tags: {tagFilterEnabled ? 'ON' : 'OFF'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <View style={styles.filterContainer}>
+        <TouchableOpacity 
+          style={[styles.filterButton, locationFilterEnabled && styles.filterButtonEnabled]}
+          onPress={() => {
+            setLocationFilterEnabled(!locationFilterEnabled);
+            fetchEvents();
+          }}
+        >
+          <Text style={styles.filterText}>
+            Location: {locationFilterEnabled ? 'ON' : 'OFF'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.filterButton, tagFilterEnabled && styles.filterButtonEnabled]}
+          onPress={() => {
+            setTagFilterEnabled(!tagFilterEnabled);
+            fetchEvents();
+          }}
+        >
+          <Text style={styles.filterText}>
+            Tags: {tagFilterEnabled ? 'ON' : 'OFF'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {currentIndex + 1 < cardData.length && (
         <SwipeCard
           imageUrl={cardData[currentIndex + 1].imageUrl}
           title={cardData[currentIndex + 1].title}
           description={cardData[currentIndex + 1].description}
           date={cardData[currentIndex + 1].date}
-          location={cardData[currentIndex + 1].location}
+          location={formatLocation(cardData[currentIndex + 1].location)}
+          tags={cardData[currentIndex + 1].tags}
           id={cardData[currentIndex + 1].id}
           style={{ 
             transform: [{ scale: 0.95 }] 
@@ -206,7 +291,8 @@ export default function SwipeScreen() {
         title={cardData[currentIndex].title}
         description={cardData[currentIndex].description}
         date={cardData[currentIndex].date}
-        location={cardData[currentIndex].location}
+        location={formatLocation(cardData[currentIndex].location)}
+        tags={cardData[currentIndex].tags}
         id={cardData[currentIndex].id}
         onSwipeLeft={handleSwipeLeft}
         onSwipeRight={handleSwipeRight}
@@ -235,5 +321,60 @@ const styles = StyleSheet.create({
   },
   location: {
     // Add appropriate styles for the location text
-  }
+  },
+  buttonContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  refreshButton: {
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  refreshText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  filterContainer: {
+    position: 'absolute',
+    top: 80,
+    flexDirection: 'row',
+    gap: 10,
+    zIndex: 10,
+  },
+  filterButton: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  filterButtonEnabled: {
+    backgroundColor: '#16a34a',
+  },
+  filterText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
 });
