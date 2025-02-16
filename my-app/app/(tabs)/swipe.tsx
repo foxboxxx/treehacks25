@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import SwipeCard from '@/components/SwipeCard';
 import Button from '@/components/Button';
 import { useState, useEffect } from 'react';
@@ -57,7 +57,6 @@ const cardData = [
 export default function SwipeScreen() {
   const [cardData, setCardData] = useState<Event[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const navigation = useNavigation();
 
   const fetchEvents = async () => {
     try {
@@ -100,16 +99,6 @@ export default function SwipeScreen() {
   useEffect(() => {
     fetchEvents();
   }, []);
-
-  // Refresh on focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Swipe screen focused, refreshing events...');
-      fetchEvents();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
 
   const handleSwipeLeft = async () => {
     if (currentIndex < cardData.length) {
@@ -159,11 +148,23 @@ export default function SwipeScreen() {
     }
   };
 
+  const handleRefresh = () => {
+    setCardData([]);  // Clear current cards
+    fetchEvents();    // Refetch events
+  };
+
   if (currentIndex >= cardData.length) {
     return (
       <View style={styles.container}>
         <Text style={styles.endMessage}>Come back soon for more opportunities!</Text>
-        <Button title="Refresh List" onPress={fetchEvents} />
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+          >
+            <Text style={styles.refreshButtonText}>Refresh Events</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -214,5 +215,19 @@ const styles = StyleSheet.create({
   endMessage: {
     fontSize: 20,
     color: '#666',
-  }
+  },
+  buttonContainer: {
+    marginTop: 20,
+  },
+  refreshButton: {
+    backgroundColor: '#3D8D7A',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  refreshButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
