@@ -14,11 +14,12 @@ import {
   KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
-import { IconSymbol, IconSymbolName } from '@/components/ui/IconSymbol';
+import { IconSymbol, IconSymbolTe } from '@/components/ui/IconSymbol';
 import { auth } from '@/app/utils/firebase/firebase.utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/app/utils/firebase/firebase.utils';
@@ -35,8 +36,9 @@ interface PreferenceItem {
 
 interface PersonalInfo {
   name: string;
-  dateOfBirth: string;
   location: string;
+  bio: string;
+  tags: string[];
   organizationName?: string;
   organizationPending?: boolean;
 }
@@ -52,8 +54,9 @@ export default function ProfileScreen() {
 
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
     name: '',
-    dateOfBirth: '',
     location: '',
+    bio: '',
+    tags: [],
   });
 
   const [profileImage, setProfileImage] = useState<string>('https://via.placeholder.com/150');
@@ -64,10 +67,17 @@ export default function ProfileScreen() {
   const [imageUrlModalVisible, setImageUrlModalVisible] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [username, setUsername] = useState('');
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
   const router = useRouter();
+
+  // Add state to track bottom sheet position
+  const [bottomSheetPosition, setBottomSheetPosition] = useState(0);
+
+  // Add animated value for rotation
+  const rotationAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -79,22 +89,29 @@ export default function ProfileScreen() {
         }
 
         const userData = await getUserData(userId);
-        console.log("Loaded user data:", userData);
+        
+        if (!userData) {
+          setIsLoading(false);
+          return;
+        }
 
-        if (userData) {
-          setPersonalInfo({
-            name: `${userData.firstName} ${userData.lastName}`,
-            dateOfBirth: userData.age || 'Not set',
-            location: typeof userData.location === 'object' 
-                ? `${userData.location.city}, ${userData.location.state}`
-                : `${userData.city}, ${userData.state}`,
-            organizationName: userData.organizationName,
-            organizationPending: userData.organizationPending,
-          });
+        setUsername(userData.username);
 
-          if (userData.preferences) {
-            setPreferences(userData.preferences);
-          }
+        setPersonalInfo({
+          name: `${userData.firstName} ${userData.lastName}`,
+          location: `${userData.city}, ${userData.state}`,
+          bio: userData.bio || 'Add a bio...',
+          tags: userData.tags || [],
+          location: typeof userData.location === 'object' 
+              ? `${userData.location.city}, ${userData.location.state}`
+              : `${userData.city}, ${userData.state}`,
+          organizationName: userData.organizationName,
+          organizationPending: userData.organizationPending,
+        });
+
+        if (userData.preferences) {
+          setPreferences(userData.preferences);
+        }
 
           if (userData.profileImage) {
             // Validate the stored image URL
@@ -201,6 +218,8 @@ export default function ProfileScreen() {
         } else if (editingField === 'location') {
           const [city, state] = editValue.split(', ');
           updateData = { city, state };
+        } else if (editingField === 'bio') {
+          updateData = { bio: editValue };
         } else {
           updateData = { [editingField]: editValue };
         }
@@ -223,10 +242,10 @@ export default function ProfileScreen() {
     switch (field) {
       case 'name':
         return 'Name';
-      case 'dateOfBirth':
-        return 'Date of Birth';
       case 'location':
         return 'Location';
+      case 'bio':
+        return 'Bio';
       default:
         return '';
     }
@@ -285,6 +304,31 @@ export default function ProfileScreen() {
     </BottomSheetScrollView>
   );
 
+  // Update the handle tap function
+  const handleBottomSheetExpand = () => {
+    if (bottomSheetPosition === 1) {
+      bottomSheetRef.current?.snapToIndex(0);
+    } else {
+      bottomSheetRef.current?.snapToIndex(1);
+    }
+  };
+
+  // Update the onChange handler
+  const handleSheetPositionChange = (index: number) => {
+    setBottomSheetPosition(index);
+    Animated.timing(rotationAnimation, {
+      toValue: index === 1 ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // Create interpolated rotation value
+  const rotateChevron = rotationAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
@@ -301,6 +345,10 @@ export default function ProfileScreen() {
               {/* Profile Header */}
               <View style={styles.header}>
                 <View style={styles.profileImageContainer}>
+                  <Text style={styles.user
+                              
+                              
+                              }>@{username}</Text>
                   <Image
                     source={{ 
                       uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
@@ -323,18 +371,53 @@ export default function ProfileScreen() {
               </View>
 
               {/* Personal Information Section */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Personal Information</Text>
-                <View style={styles.nameContainer}>
-                    <Text style={styles.nameText}>
-                        {personalInfo.name}
-                        {personalInfo.organizationName && personalInfo.organizationPending && (
-                            <Text style={styles.verifiedBadge}> ✓</Text>
-                        )}
-                    </Text>
+              
+              <View style={styles.personalInfoContainer}>
+                <TouchableOpacity style={styles.infoRow} onPress={() => handleEditField('name')}>
+                  <Text style={styles.nameText}>{personalInfo.name}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Location field below profile picture */}
+              <TouchableOpacity 
+                style={styles.locationContainer} 
+                onPress={() => handleEditField('location')}
+              >
+                <View style={styles.locationRow}>
+                  <IconSymbol 
+                    name="location" 
+                    size={18}  // Match fontSize of locationText
+                    color="#ededed"  // Match color of locationText
+                    style={styles.locationIcon} 
+                  />
+                  <Text style={styles.locationText}>{personalInfo.location}</Text>
                 </View>
-                {renderInfoItem('dateOfBirth', 'house.fill')}
-                {renderInfoItem('location', 'house.fill')}
+              </TouchableOpacity>
+
+              {/* Bio field below location */}
+              <TouchableOpacity 
+                style={styles.bioContainer} 
+                onPress={() => handleEditField('bio')}
+              >
+                <View style={styles.bioRow}>
+                  <Text style={styles.bioText}>{personalInfo.bio}</Text>
+                  <IconSymbol 
+                    name="pencil" 
+                    size={17}
+                    color="#FFFFFF"
+                    style={styles.bioIcon} 
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* Tags section below bio */}
+              <View style={styles.tagsContainer}>
+                {personalInfo.tags?.map((tag, index) => (
+                  <View key={index} style={styles.tagBubble}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+
               </View>
             </ScrollView>
 
@@ -344,7 +427,21 @@ export default function ProfileScreen() {
               enablePanDownToClose={false}
               index={0}
               style={styles.bottomSheet}
-              handleIndicatorStyle={styles.bottomSheetIndicator}
+              onChange={handleSheetPositionChange}
+              handleComponent={() => (
+                <TouchableOpacity 
+                  style={styles.bottomSheetHandle}
+                  onPress={handleBottomSheetExpand}
+                >
+                  <Animated.View style={{ transform: [{ rotate: rotateChevron }] }}>
+                    <IconSymbol 
+                      name="chevron.up" 
+                      size={20} 
+                      color="#2E7D32"
+                    />
+                  </Animated.View>
+                </TouchableOpacity>
+              )}
             >
               {renderBottomSheetContent()}
             </BottomSheet>
@@ -440,7 +537,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: 180,
+    paddingTop: 400,
     zIndex: 1,
   },
   header: {
@@ -454,25 +551,25 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     position: 'absolute',
-    top: 50,
+    top: 20,
     alignSelf: 'center',
     zIndex: 3,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 288,
+    height: 288,
+    borderRadius: 144,
     borderWidth: 4,
     borderColor: '#FFF',
   },
   editImageButton: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
+    right: 10,
+    bottom: 10,
     backgroundColor: '#2E7D32',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -483,15 +580,16 @@ const styles = StyleSheet.create({
   },
   plusIcon: {
     color: '#FFF',
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: '300',
-    lineHeight: 24,
+    lineHeight: 36,
     textAlign: 'center',
-    marginTop: -2,
+    marginTop: -3,
   },
   section: {
     backgroundColor: '#FFF',
     margin: 16,
+    marginTop: 32,
     padding: 20,
     borderRadius: 16,
     shadowColor: '#000',
@@ -628,13 +726,27 @@ const styles = StyleSheet.create({
   },
   bottomSheetContent: {
     paddingBottom: 20,
+    paddingTop: 16,
   },
   bottomSheet: {
-    marginBottom: 49, // Height of tab bar
+    marginBottom: 49,
   },
-  bottomSheetIndicator: {
-    backgroundColor: '#B3D8A8',
-    width: 50,
+  bottomSheetHandle: {
+    position: 'absolute',
+    top: -24,
+    left: 0,
+    right: 0,
+    height: 40,
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 1,
   },
   background: {
     backgroundColor: '#B3D8A8',
@@ -645,20 +757,96 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 0,
   },
-  nameContainer: {
-    flexDirection: 'row',
+  
+  usernameText: {
+    color: '#FFF',
+    fontSize: 36,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  personalInfoContainer: {
     alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 15,
+    paddingHorizontal: 24,
+    marginTop: -10,
+  },
+  infoRow: {
+    marginBottom: 24,
   },
   nameText: {
-    fontSize: 18,
-    color: '#2C3E50',
+    color: '#FFFFFF',
+    fontSize: 32,
     fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
-  verifiedBadge: {
-    color: '#2E7D32',
-    fontSize: 20,
-    fontWeight: 'bold',
+  locationContainer: {
+    alignItems: 'center',
+    marginTop: -15,
+    paddingHorizontal: 24,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIcon: {
+    marginRight: 8,
+  },
+  locationText: {
+    color: '#ededed',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  chevronIcon: {
+    transform: [{ rotate: '0deg' }],
+  },
+  chevronRotated: {
+    transform: [{ rotate: '180deg' }],
+  },
+  bioContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 24,
+  },
+  bioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bioIcon: {
+    marginLeft: 8,
+  },
+  bioText: {
+    //color: '#FBFFE4',
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    marginTop: 16,
+  },
+  tagBubble: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    paddingHorizontal: 13,
+    paddingVertical: 6.5,
+    borderRadius: 15,
+    margin: 4,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
