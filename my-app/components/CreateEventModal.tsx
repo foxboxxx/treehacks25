@@ -52,18 +52,27 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     const handleSubmit = async () => {
+        // Validation for required fields
+        if (!title || !description || !date || !time || !location) {
+            Alert.alert('Error', 'Please fill in all fields including location');
+            return;
+        }
+
+        // Validation for image URL if needed
+        if (imageUrl && !imageUrl.startsWith('http')) {
+            alert('Please enter a valid image URL');
+            return;
+        }
+
+        // Validation for selected tags
+        if (selectedTags.length === 0) {
+            alert('Please select at least one tag');
+            return;
+        }
+
         try {
-            if (!imageUrl.startsWith('http')) {
-                alert('Please enter a valid image URL');
-                return;
-            }
-
-            if (selectedTags.length === 0) {
-                alert('Please select at least one tag');
-                return;
-            }
-
-            await createEvent({
+            // Prepare event data
+            const eventData = {
                 title,
                 description,
                 date,
@@ -71,23 +80,16 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 location,
                 imageUrl,
                 tags: selectedTags,
-            });
-            
-            onEventCreated();
-            onClose();
-            // Reset form
-            setTitle('');
-            setDescription('');
-            setDate('');
-            setTime('');
-            setLocation('');
-            setImageUrl('');
-            setSelectedTags([]);
+            };
+
+            // Call the createEvent function
+            await createEvent(eventData);
         } catch (error) {
             console.error('Error creating event:', error);
-            alert('Failed to create event');
+            alert('An error occurred while creating the event');
         }
     };
+
 
     const handleFocus = (y: number) => {
         scrollViewRef.current?.scrollTo({
@@ -324,6 +326,32 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                                     {date || 'Select Date'}
                                 </Text>
                             </TouchableOpacity>
+
+
+                        </View>
+
+                        <View style={styles.locationSection}>
+                            <Text style={styles.label}>Location</Text>
+                            <LocationPicker 
+                                onLocationSelect={handleLocationSelect}
+                                initialLocation={location}
+                            />
+                            {location && (
+                                <Text style={styles.selectedLocation}>
+                                    Selected: {location.city}, {location.state}
+                                </Text>
+                            )}
+                        </View>
+
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                                <Text style={styles.buttonText}>Create Event</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
+                                <Text style={styles.buttonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+
                         </View>
 
                         <View style={[
