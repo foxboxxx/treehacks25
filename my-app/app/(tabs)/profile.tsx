@@ -19,13 +19,14 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
-import { IconSymbol, IconSymbolName } from '@/components/ui/IconSymbol';
+import { IconSymbol, IconSymbolTe } from '@/components/ui/IconSymbol';
 import { auth } from '@/app/utils/firebase/firebase.utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/app/utils/firebase/firebase.utils';
 import { getUserData } from '@/app/utils/firebase/firebase.utils';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
 
 interface PreferenceItem {
   id: string;
@@ -38,6 +39,8 @@ interface PersonalInfo {
   location: string;
   bio: string;
   tags: string[];
+  organizationName?: string;
+  organizationPending?: boolean;
 }
 
 export default function ProfileScreen() {
@@ -68,6 +71,7 @@ export default function ProfileScreen() {
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
+  const router = useRouter();
 
   // Add state to track bottom sheet position
   const [bottomSheetPosition, setBottomSheetPosition] = useState(0);
@@ -76,18 +80,16 @@ export default function ProfileScreen() {
   const rotationAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const loadUserData = async () => {
       try {
-        setIsLoading(true);
-        setImageError(false);
-        
         const userId = auth.currentUser?.uid;
         if (!userId) {
-          setIsLoading(false);
+          router.replace('/');
           return;
         }
 
         const userData = await getUserData(userId);
+        
         if (!userData) {
           setIsLoading(false);
           return;
@@ -100,37 +102,43 @@ export default function ProfileScreen() {
           location: `${userData.city}, ${userData.state}`,
           bio: userData.bio || 'Add a bio...',
           tags: userData.tags || [],
+          location: typeof userData.location === 'object' 
+              ? `${userData.location.city}, ${userData.location.state}`
+              : `${userData.city}, ${userData.state}`,
+          organizationName: userData.organizationName,
+          organizationPending: userData.organizationPending,
         });
 
         if (userData.preferences) {
           setPreferences(userData.preferences);
         }
 
-        if (userData.profileImage) {
-          // Validate the stored image URL
-          try {
-            const response = await fetch(userData.profileImage);
-            if (response.ok) {
-              setProfileImage(userData.profileImage);
-            } else {
+          if (userData.profileImage) {
+            // Validate the stored image URL
+            try {
+              const response = await fetch(userData.profileImage);
+              if (response.ok) {
+                setProfileImage(userData.profileImage);
+              } else {
+                setImageError(true);
+                setProfileImage('https://via.placeholder.com/150');
+              }
+            } catch (error) {
               setImageError(true);
               setProfileImage('https://via.placeholder.com/150');
             }
-          } catch (error) {
-            setImageError(true);
-            setProfileImage('https://via.placeholder.com/150');
           }
         }
       } catch (error) {
         Alert.alert('Error', 'Failed to load user data');
-        setImageError(true);
+        console.error('Error loading user data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserData();
-  }, []);
+    loadUserData();
+  }, [router]);
 
   const handleImageError = () => {
     setImageError(true);
@@ -190,7 +198,8 @@ export default function ProfileScreen() {
 
   const handleEditField = (field: keyof PersonalInfo) => {
     setEditingField(field);
-    setEditValue(personalInfo[field]);
+    const value = personalInfo[field];
+    setEditValue(typeof value === 'string' ? value : '');
     setEditModalVisible(true);
   };
 
@@ -244,12 +253,12 @@ export default function ProfileScreen() {
 
   const renderInfoItem = (field: keyof PersonalInfo, icon: IconSymbolName) => (
     <TouchableOpacity style={styles.infoItem} onPress={() => handleEditField(field)}>
-      <IconSymbol name={icon} size={20} color="#666" />
-      <View style={styles.infoContent}>
-        <Text style={styles.infoLabel}>{getFieldLabel(field)}</Text>
-        <Text style={styles.infoValue}>{personalInfo[field]}</Text>
-      </View>
-      <IconSymbol name="chevron.right" size={20} color="#666" />
+        <IconSymbol name={icon} size={20} color="#666" />
+        <View style={styles.infoContent}>
+            <Text style={styles.infoLabel}>{getFieldLabel(field)}</Text>
+            <Text style={styles.infoValue}>{personalInfo[field]}</Text>
+        </View>
+        <IconSymbol name="chevron.right" size={20} color="#666" />
     </TouchableOpacity>
   );
 
@@ -336,7 +345,10 @@ export default function ProfileScreen() {
               {/* Profile Header */}
               <View style={styles.header}>
                 <View style={styles.profileImageContainer}>
-                  <Text style={styles.usernameText}>@{username}</Text>
+                  <Text style={styles.user
+                              
+                              
+                              }>@{username}</Text>
                   <Image
                     source={{ 
                       uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
@@ -359,6 +371,7 @@ export default function ProfileScreen() {
               </View>
 
               {/* Personal Information Section */}
+              
               <View style={styles.personalInfoContainer}>
                 <TouchableOpacity style={styles.infoRow} onPress={() => handleEditField('name')}>
                   <Text style={styles.nameText}>{personalInfo.name}</Text>
@@ -404,6 +417,7 @@ export default function ProfileScreen() {
                     <Text style={styles.tagText}>{tag}</Text>
                   </View>
                 ))}
+
               </View>
             </ScrollView>
 
@@ -610,7 +624,7 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 16,
     color: '#2C3E50',
-    fontWeight: '500',
+    marginTop: 4,
   },
   preferenceItem: {
     flexDirection: 'row',
@@ -743,6 +757,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 0,
   },
+  
   usernameText: {
     color: '#FFF',
     fontSize: 36,

@@ -23,8 +23,8 @@ type AuthContextType = {
     setState: (state: string) => void;
     username: string;
     setUsername: (username: string) => void;
-    // likedEvents: string[];
-    // setLikedEvents: (events: string[]) => void;
+    isOrganizer: boolean;
+    setIsOrganizer: (isOrganizer: boolean) => void;
     handleSignIn: () => Promise<void>;
     handleSignUp: () => Promise<void>;
     navigateToSignUp: () => void;
@@ -92,8 +92,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [age, setAge] = useState("");
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
-    const [username, setUsername] = useState("");  
-    // const [likedEvents, setLikedEvents] = useState<string[]>([]);
+    const [username, setUsername] = useState("");
+    const [isOrganizer, setIsOrganizer] = useState(false);
     
     const navigateToSignUp = () => {
         router.push("../auth/signup");
@@ -112,14 +112,19 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                 city,
                 state,
                 username,
+                isOrganizer,
+                organizationVerified: false,
                 tags: [],
                 createdAt: new Date().toISOString(),
             };
 
             const user = await registerWithEmailAndPassword(email, password, userData);
             if (user) {
-                console.log("User data:", userData);
-                router.replace("/auth/select-tags");
+                if (isOrganizer) {
+                    router.replace("/auth/organization-details");
+                } else {
+                    router.replace("/auth/select-tags");
+                }
             }
         } catch (error: any) {
             alert(error.message || "Registration failed");
@@ -163,8 +168,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setState,
             username,
             setUsername,
-            // likedEvents,
-            // setLikedEvents,
+            isOrganizer,
+            setIsOrganizer,
             handleSignIn,
             handleSignUp,
             navigateToSignUp
