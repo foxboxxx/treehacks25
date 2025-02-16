@@ -159,6 +159,7 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             age: userData.age,
             city: userData.city,
             state: userData.state,
+            bio: '',
             createdAt: new Date(),
             items: [],
             likedEvents: new Array(),

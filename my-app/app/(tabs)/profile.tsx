@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -34,8 +35,8 @@ interface PreferenceItem {
 
 interface PersonalInfo {
   name: string;
-  dateOfBirth: string;
   location: string;
+  bio: string;
 }
 
 export default function ProfileScreen() {
@@ -49,8 +50,8 @@ export default function ProfileScreen() {
 
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
     name: '',
-    dateOfBirth: '',
     location: '',
+    bio: '',
   });
 
   const [profileImage, setProfileImage] = useState<string>('https://via.placeholder.com/150');
@@ -65,6 +66,12 @@ export default function ProfileScreen() {
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
+
+  // Add state to track bottom sheet position
+  const [bottomSheetPosition, setBottomSheetPosition] = useState(0);
+
+  // Add animated value for rotation
+  const rotationAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -88,8 +95,8 @@ export default function ProfileScreen() {
 
         setPersonalInfo({
           name: `${userData.firstName} ${userData.lastName}`,
-          dateOfBirth: userData.age || 'Not set',
           location: `${userData.city}, ${userData.state}`,
+          bio: userData.bio || 'Add a bio...',
         });
 
         if (userData.preferences) {
@@ -199,6 +206,8 @@ export default function ProfileScreen() {
         } else if (editingField === 'location') {
           const [city, state] = editValue.split(', ');
           updateData = { city, state };
+        } else if (editingField === 'bio') {
+          updateData = { bio: editValue };
         } else {
           updateData = { [editingField]: editValue };
         }
@@ -221,10 +230,10 @@ export default function ProfileScreen() {
     switch (field) {
       case 'name':
         return 'Name';
-      case 'dateOfBirth':
-        return 'Date of Birth';
       case 'location':
         return 'Location';
+      case 'bio':
+        return 'Bio';
       default:
         return '';
     }
@@ -283,6 +292,31 @@ export default function ProfileScreen() {
     </BottomSheetScrollView>
   );
 
+  // Update the handle tap function
+  const handleBottomSheetExpand = () => {
+    if (bottomSheetPosition === 1) {
+      bottomSheetRef.current?.snapToIndex(0);
+    } else {
+      bottomSheetRef.current?.snapToIndex(1);
+    }
+  };
+
+  // Update the onChange handler
+  const handleSheetPositionChange = (index: number) => {
+    setBottomSheetPosition(index);
+    Animated.timing(rotationAnimation, {
+      toValue: index === 1 ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // Create interpolated rotation value
+  const rotateChevron = rotationAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
@@ -322,12 +356,35 @@ export default function ProfileScreen() {
               </View>
 
               {/* Personal Information Section */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Personal Information</Text>
-                {renderInfoItem('name', 'house.fill')}
-                {renderInfoItem('dateOfBirth', 'house.fill')}
-                {renderInfoItem('location', 'house.fill')}
+              <View style={styles.personalInfoContainer}>
+                <TouchableOpacity style={styles.infoRow} onPress={() => handleEditField('name')}>
+                  <Text style={styles.nameText}>{personalInfo.name}</Text>
+                </TouchableOpacity>
               </View>
+
+              {/* Location field below profile picture */}
+              <TouchableOpacity 
+                style={styles.locationContainer} 
+                onPress={() => handleEditField('location')}
+              >
+                <View style={styles.locationRow}>
+                  <IconSymbol 
+                    name="location" 
+                    size={18}  // Match fontSize of locationText
+                    color="#ededed"  // Match color of locationText
+                    style={styles.locationIcon} 
+                  />
+                  <Text style={styles.locationText}>{personalInfo.location}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Bio field below location */}
+              <TouchableOpacity 
+                style={styles.bioContainer} 
+                onPress={() => handleEditField('bio')}
+              >
+                <Text style={styles.bioText}>{personalInfo.bio}</Text>
+              </TouchableOpacity>
             </ScrollView>
 
             <BottomSheet
@@ -336,10 +393,20 @@ export default function ProfileScreen() {
               enablePanDownToClose={false}
               index={0}
               style={styles.bottomSheet}
+              onChange={handleSheetPositionChange}
               handleComponent={() => (
-                <View style={styles.bottomSheetHandle}>
-                  <IconSymbol name="chevron.up" size={20} color="#2E7D32" />
-                </View>
+                <TouchableOpacity 
+                  style={styles.bottomSheetHandle}
+                  onPress={handleBottomSheetExpand}
+                >
+                  <Animated.View style={{ transform: [{ rotate: rotateChevron }] }}>
+                    <IconSymbol 
+                      name="chevron.up" 
+                      size={20} 
+                      color="#2E7D32"
+                    />
+                  </Animated.View>
+                </TouchableOpacity>
               )}
             >
               {renderBottomSheetContent()}
@@ -665,5 +732,59 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  personalInfoContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginTop: -10,
+  },
+  infoRow: {
+    marginBottom: 24,
+  },
+  nameText: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  locationContainer: {
+    alignItems: 'center',
+    marginTop: -15,
+    paddingHorizontal: 24,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIcon: {
+    marginRight: 8,
+  },
+  locationText: {
+    color: '#ededed',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  chevronIcon: {
+    transform: [{ rotate: '0deg' }],
+  },
+  chevronRotated: {
+    transform: [{ rotate: '180deg' }],
+  },
+  bioContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 24,
+  },
+  bioText: {
+    //color: '#FBFFE4',
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
 });
