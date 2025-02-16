@@ -18,7 +18,10 @@ import {
     arrayUnion,
     query,
     where,
-    getDocs
+    getDocs,
+    limit,
+    orderBy,
+    onSnapshot
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Platform } from 'react-native';
@@ -179,6 +182,140 @@ export const getUserData = async (userId) => {
     } catch (err) {
         console.error("Error getting user data:", err);
         throw err;
+    }
+};
+
+// Search users by username
+export const searchUsers = async (searchQuery) => {
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(
+            usersRef,
+            where("username", ">=", searchQuery),
+            where("username", "<=", searchQuery + '\uf8ff'),
+            limit(3)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const users = [];
+        querySnapshot.forEach((doc) => {
+            const userData = doc.data();
+            if (doc.id !== auth.currentUser?.uid) { // Don't include current user
+                users.push({
+                    uid: doc.id,
+                    username: userData.username,
+                    profileImage: userData.profileImage
+                });
+            }
+        });
+        return users;
+    } catch (error) {
+        console.error("Error searching users:", error);
+        throw error;
+    }
+};
+
+// Start or get existing chat
+export const startChat = async (otherUserId) => {
+    try {
+        const currentUserId = auth.currentUser?.uid;
+        if (!currentUserId) throw new Error("User not authenticated");
+
+        // Create a unique chat ID by sorting user IDs
+        const chatId = [currentUserId, otherUserId].sort().join('_');
+        const chatRef = doc(db, "chats", chatId);
+        const chatDoc = await getDoc(chatRef);
+
+        if (!chatDoc.exists()) {
+            // Create new chat
+            await setDoc(chatRef, {
+                participants: [currentUserId, otherUserId],
+                createdAt: new Date(),
+                lastMessage: null,
+                lastMessageTime: null
+            });
+        }
+
+        return chatId;
+    } catch (error) {
+        console.error("Error starting chat:", error);
+        throw error;
+    }
+};
+
+// Send a message
+export const sendMessage = async (chatId, text) => {
+    try {
+        const messageRef = doc(collection(db, "chats", chatId, "messages"));
+        const message = {
+            id: messageRef.id,
+            text,
+            senderId: auth.currentUser.uid,
+            timestamp: new Date(),
+        };
+        
+        await setDoc(messageRef, message);
+        
+        // Update last message in chat
+        await updateDoc(doc(db, "chats", chatId), {
+            lastMessage: text,
+            lastMessageTime: new Date()
+        });
+        
+        return message;
+    } catch (error) {
+        console.error("Error sending message:", error);
+        throw error;
+    }
+};
+
+// Subscribe to messages
+export const subscribeToMessages = (chatId, callback) => {
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
+    
+    return onSnapshot(q, (snapshot) => {
+        const messages = [];
+        snapshot.forEach((doc) => {
+            messages.push({ ...doc.data() });
+        });
+        callback(messages);
+    });
+};
+
+export const getUserChats = async (userId) => {
+    try {
+        const chatsRef = collection(db, "chats");
+        const q = query(
+            chatsRef,
+            where("participants", "array-contains", userId)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const chats = [];
+        
+        for (const docSnapshot of querySnapshot.docs) {
+            const chatData = docSnapshot.data();
+            const otherUserId = chatData.participants.find(id => id !== userId);
+            const otherUserRef = doc(db, "users", otherUserId);
+            const otherUserDoc = await getDoc(otherUserRef);
+            const otherUserData = otherUserDoc.data();
+            
+            chats.push({
+                chatId: docSnapshot.id,
+                otherUsername: otherUserData.username,
+                lastMessage: chatData.lastMessage,
+                lastMessageTime: chatData.lastMessageTime?.toDate(),
+                profileImage: otherUserData.profileImage
+            });
+        }
+        
+        return chats.sort((a, b) => 
+            (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0)
+        );
+    } catch (error) {
+        console.error("Error getting user chats:", error);
+        throw error;
     }
 };
 

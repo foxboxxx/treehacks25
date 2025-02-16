@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { createEvent } from '../app/utils/firebase/firebase.utils';
 import CalendarPicker from 'react-native-calendar-picker';
+import * as ImagePicker from 'expo-image-picker';
 
 interface CreateEventModalProps {
     visible: boolean;
@@ -77,6 +78,23 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
         });
         setDate(formattedDate);
         setShowCalendar(false);
+    };
+
+    const pickImage = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsEditing: true,
+                aspect: [16, 9],
+                quality: 1,
+            });
+
+            if (!result.canceled) {
+                setImageUrl(result.assets[0].uri);
+            }
+        } catch (error) {
+            alert('Error selecting image');
+        }
     };
 
     return (

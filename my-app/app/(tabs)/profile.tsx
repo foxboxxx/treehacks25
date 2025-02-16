@@ -19,6 +19,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { IconSymbol, IconSymbolName } from '@/components/ui/IconSymbol';
 import * as ImagePicker from 'expo-image-picker';
+import { uploadImage, updateUserProfileImage } from '@/app/utils/firebase/firebase.utils';
+import { auth } from '@/app/utils/firebase/firebase.utils';
 
 interface PreferenceItem {
   id: string;
@@ -65,7 +67,7 @@ export default function ProfileScreen() {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#B3D8A8',
     paddingVertical: 30,
     alignItems: 'center',
     borderBottomLeftRadius: 30,
