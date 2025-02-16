@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
     Modal, 
     View, 
@@ -10,12 +10,16 @@ import {
     Platform,
     ScrollView,
     KeyboardAvoidingView,
-    Keyboard
+    Keyboard,
+    Dimensions,
+    ActivityIndicator,
 } from 'react-native';
 import { createEvent } from '../app/utils/firebase/firebase.utils';
 import CalendarPicker from 'react-native-calendar-picker';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 interface CreateEventModalProps {
     visible: boolean;
@@ -35,12 +39,23 @@ const TAGS = [
     'SocialMediaForChange'
 ];
 
+interface LocationData {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    city?: string;
+    state?: string;
+}
+
 export default function CreateEventModal({ visible, onClose, onEventCreated }: CreateEventModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [location, setLocation] = useState('');
+    const [location, setLocation] = useState<LocationData>({
+        latitude: 37.78825,
+        longitude: -122.4324,
+    });
     const [imageUrl, setImageUrl] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -50,6 +65,61 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+    const mapRef = useRef<MapView>(null);
+
+    useEffect(() => {
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                alert('Permission to access location was denied');
+                return;
+            }
+
+            setIsLoadingLocation(true);
+            try {
+                const currentLocation = await Location.getCurrentPositionAsync({});
+                const newLocation = {
+                    latitude: currentLocation.coords.latitude,
+                    longitude: currentLocation.coords.longitude,
+                };
+                setLocation(newLocation);
+                await updateLocationAddress(newLocation.latitude, newLocation.longitude);
+            } catch (error) {
+                console.error('Error getting location:', error);
+            } finally {
+                setIsLoadingLocation(false);
+            }
+        })();
+    }, []);
+
+    const updateLocationAddress = async (latitude: number, longitude: number) => {
+        try {
+            const response = await Location.reverseGeocodeAsync({
+                latitude,
+                longitude
+            });
+
+            if (response && response[0]) {
+                const address = response[0];
+                setLocation(prev => ({
+                    ...prev,
+                    latitude,
+                    longitude,
+                    address: `${address.name || ''} ${address.street || ''}`.trim(),
+                    city: address.city || '',
+                    state: address.region || ''
+                }));
+            }
+        } catch (error) {
+            console.error('Error getting address:', error);
+        }
+    };
+
+    const handleMapPress = async (event: any) => {
+        const { coordinate } = event.nativeEvent;
+        await updateLocationAddress(coordinate.latitude, coordinate.longitude);
+    };
 
     const handleSubmit = async () => {
         try {
@@ -68,9 +138,13 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 description,
                 date,
                 time,
-                location,
+                location: `${location.address || ''}, ${location.city || ''}, ${location.state || ''}`.trim(),
                 imageUrl,
                 tags: selectedTags,
+                coordinates: {
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                }
             });
             
             onEventCreated();
@@ -80,7 +154,10 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
             setDescription('');
             setDate('');
             setTime('');
-            setLocation('');
+            setLocation({
+                latitude: 37.78825,
+                longitude: -122.4324,
+            });
             setImageUrl('');
             setSelectedTags([]);
         } catch (error) {
@@ -139,6 +216,44 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 : [...prev, tag]
         );
     };
+
+    const LocationPicker = () => (
+        <View style={styles.locationContainer}>
+            <Text style={styles.locationTitle}>Select Location</Text>
+            {isLoadingLocation ? (
+                <ActivityIndicator size="large" color="#3D8D7A" />
+            ) : (
+                <>
+                    <View style={styles.mapContainer}>
+                        <MapView
+                            ref={mapRef}
+                            style={styles.map}
+                            initialRegion={{
+                                latitude: location.latitude,
+                                longitude: location.longitude,
+                                latitudeDelta: 0.0922,
+                                longitudeDelta: 0.0421,
+                            }}
+                            onPress={handleMapPress}
+                        >
+                            <Marker
+                                coordinate={{
+                                    latitude: location.latitude,
+                                    longitude: location.longitude,
+                                }}
+                            />
+                        </MapView>
+                    </View>
+                    {location.city && location.state && (
+                        <Text style={styles.locationText}>
+                            {location.address && `${location.address}, `}
+                            {location.city}, {location.state}
+                        </Text>
+                    )}
+                </>
+            )}
+        </View>
+    );
 
     return (
         <Modal
@@ -326,18 +441,7 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                             </TouchableOpacity>
                         </View>
 
-                        <View style={[
-                            styles.remainingInputs,
-                            showCalendar && styles.hiddenInputs
-                        ]}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Location"
-                                value={location}
-                                onChangeText={setLocation}
-                                placeholderTextColor="#afafaf"
-                            />
-                        </View>
+                        <LocationPicker />
 
                         <View style={styles.buttonContainer}>
                             <TouchableOpacity style={styles.button} onPress={handleSubmit}>
@@ -370,10 +474,12 @@ const styles = StyleSheet.create({
     modalContent: {
         backgroundColor: 'white',
         borderRadius: 20,
-        padding: 20,
-        margin: 20,
-        marginTop: 50,
-        minHeight: '100%',
+        padding: 15,
+        margin: 15,
+        marginTop: Platform.OS === 'ios' ? 40 : 20,
+        marginBottom: Platform.OS === 'ios' ? 40 : 20,
+        maxHeight: '95%',
+        minHeight: Dimensions.get('window').height * 0.95,
     },
     title: {
         fontSize: 24,
@@ -382,7 +488,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     imagePreview: {
-        height: 200,
+        height: 150,
         backgroundColor: '#f0f0f0',
         borderRadius: 10,
         marginBottom: 15,
@@ -404,13 +510,18 @@ const styles = StyleSheet.create({
         backgroundColor: '#f9f9f9',
     },
     multilineInput: {
-        height: 100,
+        height: 80,
         textAlignVertical: 'top',
         paddingTop: 15,
     },
     buttonContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        position: 'relative',
+        marginTop: 15,
+        bottom: 0,
+        left: 0,
+        right: 0,
     },
     button: {
         flex: 1,
@@ -419,6 +530,14 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center',
         marginHorizontal: 5,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     cancelButton: {
         backgroundColor: '#FF3B30',
@@ -576,5 +695,30 @@ const styles = StyleSheet.create({
     },
     selectedTagText: {
         color: '#fff',
+    },
+    locationContainer: {
+        marginBottom: 15,
+    },
+    locationTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 10,
+    },
+    mapContainer: {
+        borderRadius: 10,
+        overflow: 'hidden',
+        height: 200,
+        marginBottom: 10,
+    },
+    map: {
+        width: '100%',
+        height: '100%',
+    },
+    locationText: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        paddingHorizontal: 10,
     },
 }); 

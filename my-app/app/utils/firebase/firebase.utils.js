@@ -183,18 +183,23 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
 export const createEvent = async (eventData) => {
     try {
         const eventRef = doc(collection(db, "events"));
-        await setDoc(eventRef, {
+        const eventToCreate = {
+            ...eventData,
+            location: {
+                address: eventData.location,
+                coordinates: eventData.coordinates
+            },
             id: eventRef.id,
             title: eventData.title,
             description: eventData.description,
             date: eventData.date,
             time: eventData.time,
-            location: eventData.location,
             imageUrl: eventData.imageUrl,
             tags: eventData.tags,
             createdAt: new Date(),
             createdBy: auth.currentUser.uid
-        });
+        };
+        await setDoc(eventRef, eventToCreate);
         return eventRef.id;
     } catch (err) {
         console.error("Error creating event:", err);
