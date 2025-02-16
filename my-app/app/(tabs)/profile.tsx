@@ -63,11 +63,20 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        setIsLoading(true);
+        setImageError(false);
+        
         const userId = auth.currentUser?.uid;
-        if (!userId) return;
+        if (!userId) {
+          setIsLoading(false);
+          return;
+        }
 
         const userData = await getUserData(userId);
-        if (!userData) return;
+        if (!userData) {
+          setIsLoading(false);
+          return;
+        }
 
         setPersonalInfo({
           name: `${userData.firstName} ${userData.lastName}`,
@@ -80,10 +89,23 @@ export default function ProfileScreen() {
         }
 
         if (userData.profileImage) {
-          setProfileImage(userData.profileImage);
+          // Validate the stored image URL
+          try {
+            const response = await fetch(userData.profileImage);
+            if (response.ok) {
+              setProfileImage(userData.profileImage);
+            } else {
+              setImageError(true);
+              setProfileImage('https://via.placeholder.com/150');
+            }
+          } catch (error) {
+            setImageError(true);
+            setProfileImage('https://via.placeholder.com/150');
+          }
         }
       } catch (error) {
         Alert.alert('Error', 'Failed to load user data');
+        setImageError(true);
       } finally {
         setIsLoading(false);
       }
@@ -213,77 +235,83 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Profile Header */}
-        <View style={styles.header}>
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={{ 
-                uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
-              }}
-              style={styles.profileImage}
-              onError={handleImageError}
-            />
-            {imageLoading && (
-              <View style={styles.imageLoadingOverlay}>
-                <ActivityIndicator size="large" color="#4ECDC4" />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4ECDC4" />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Profile Header */}
+          <View style={styles.header}>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={{ 
+                  uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
+                }}
+                style={styles.profileImage}
+                onError={handleImageError}
+              />
+              {imageLoading && (
+                <View style={styles.imageLoadingOverlay}>
+                  <ActivityIndicator size="large" color="#4ECDC4" />
+                </View>
+              )}
+              <TouchableOpacity 
+                style={styles.editImageButton} 
+                onPress={() => setImageUrlModalVisible(true)}
+              >
+                <IconSymbol name="chevron.right" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Personal Information Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+            {renderInfoItem('name', 'house.fill')}
+            {renderInfoItem('dateOfBirth', 'house.fill')}
+            {renderInfoItem('location', 'house.fill')}
+          </View>
+
+          {/* Preferences Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Preferences</Text>
+            {preferences.map((pref) => (
+              <View key={pref.id} style={styles.preferenceItem}>
+                <Text style={styles.preferenceLabel}>{pref.label}</Text>
+                <Switch
+                  value={pref.enabled}
+                  onValueChange={() => togglePreference(pref.id)}
+                  trackColor={{ false: '#767577', true: '#81b0ff' }}
+                  thumbColor={pref.enabled ? '#4ECDC4' : '#f4f3f4'}
+                />
               </View>
-            )}
-            <TouchableOpacity 
-              style={styles.editImageButton} 
-              onPress={() => setImageUrlModalVisible(true)}
-            >
-              <IconSymbol name="chevron.right" size={20} color="#fff" />
+            ))}
+          </View>
+
+          {/* Settings Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Settings</Text>
+            <TouchableOpacity style={styles.settingItem}>
+              <IconSymbol name="lock.fill" size={20} color="#666" />
+              <Text style={styles.settingLabel}>Privacy Settings</Text>
+              <IconSymbol name="chevron.right" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.settingItem}>
+              <IconSymbol name="bell.fill" size={20} color="#666" />
+              <Text style={styles.settingLabel}>Notification Settings</Text>
+              <IconSymbol name="chevron.right" size={20} color="#666" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.settingItem}>
+              <IconSymbol name="gear" size={20} color="#666" />
+              <Text style={styles.settingLabel}>Account Settings</Text>
+              <IconSymbol name="chevron.right" size={20} color="#666" />
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Personal Information Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          {renderInfoItem('name', 'house.fill')}
-          {renderInfoItem('dateOfBirth', 'house.fill')}
-          {renderInfoItem('location', 'house.fill')}
-        </View>
-
-        {/* Preferences Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          {preferences.map((pref) => (
-            <View key={pref.id} style={styles.preferenceItem}>
-              <Text style={styles.preferenceLabel}>{pref.label}</Text>
-              <Switch
-                value={pref.enabled}
-                onValueChange={() => togglePreference(pref.id)}
-                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                thumbColor={pref.enabled ? '#4ECDC4' : '#f4f3f4'}
-              />
-            </View>
-          ))}
-        </View>
-
-        {/* Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          <TouchableOpacity style={styles.settingItem}>
-            <IconSymbol name="lock.fill" size={20} color="#666" />
-            <Text style={styles.settingLabel}>Privacy Settings</Text>
-            <IconSymbol name="chevron.right" size={20} color="#666" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.settingItem}>
-            <IconSymbol name="bell.fill" size={20} color="#666" />
-            <Text style={styles.settingLabel}>Notification Settings</Text>
-            <IconSymbol name="chevron.right" size={20} color="#666" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <IconSymbol name="gear" size={20} color="#666" />
-            <Text style={styles.settingLabel}>Account Settings</Text>
-            <IconSymbol name="chevron.right" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
 
       {/* Edit Modal */}
       <Modal
@@ -543,5 +571,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 60,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
