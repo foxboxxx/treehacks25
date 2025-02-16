@@ -56,6 +56,13 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
+        name="location"
+        options={{
+          title: 'Location',
+          headerShown: true,
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: 'Home',

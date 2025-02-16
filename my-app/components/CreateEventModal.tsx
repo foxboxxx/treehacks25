@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
     Modal, 
     View, 
@@ -10,12 +10,15 @@ import {
     Platform,
     ScrollView,
     KeyboardAvoidingView,
-    Keyboard
+    Keyboard,
+    Alert,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { createEvent } from '../app/utils/firebase/firebase.utils';
 import CalendarPicker from 'react-native-calendar-picker';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import LocationPicker from './LocationPicker';
 
 interface CreateEventModalProps {
     visible: boolean;
@@ -23,12 +26,18 @@ interface CreateEventModalProps {
     onEventCreated: () => void;
 }
 
+interface LocationData {
+    latitude: number;
+    longitude: number;
+    city: string;
+    state: string;
+}
+
 export default function CreateEventModal({ visible, onClose, onEventCreated }: CreateEventModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [location, setLocation] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -37,35 +46,43 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [period, setPeriod] = useState('AM');
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
+    const [location, setLocation] = useState<LocationData | null>(null);
 
     const handleSubmit = async () => {
-        try {
-            if (!imageUrl.startsWith('http')) {
-                alert('Please enter a valid image URL');
-                return;
-            }
+        if (!title || !description || !date || !time || !location) {
+            Alert.alert('Error', 'Please fill in all fields including location');
+            return;
+        }
 
-            await createEvent({
+        try {
+            const eventData = {
                 title,
                 description,
                 date,
                 time,
-                location,
+                location: {
+                    city: location.city,
+                    state: location.state,
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                },
                 imageUrl,
-            });
-            
+            };
+
+            await createEvent(eventData);
             onEventCreated();
             onClose();
+            
             // Reset form
             setTitle('');
             setDescription('');
             setDate('');
             setTime('');
-            setLocation('');
             setImageUrl('');
+            setLocation(null);
         } catch (error) {
             console.error('Error creating event:', error);
-            alert('Failed to create event');
+            Alert.alert('Error', 'Failed to create event');
         }
     };
 
@@ -112,6 +129,10 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
         }
     };
 
+    const handleLocationSelect = (locationData: LocationData) => {
+        setLocation(locationData);
+    };
+
     return (
         <Modal
             visible={visible}
@@ -122,203 +143,205 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.modalContainer}
             >
-                <ScrollView 
-                    ref={scrollViewRef}
-                    contentContainerStyle={styles.scrollContainer}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.title}>Create New Event</Text>
-                        
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Image URL (e.g., https://example.com/image.jpg)"
-                            value={imageUrl}
-                            onChangeText={setImageUrl}
-                            placeholderTextColor="#afafaf"
-                            autoCapitalize="none"
-                            onFocus={() => handleFocus(0)}
-                        />
-                        
-                        {imageUrl && (
-                            <View style={styles.imagePreview}>
-                                <Image 
-                                    source={{ uri: imageUrl }} 
-                                    style={styles.previewImage}
-                                    onError={() => {
-                                        alert('Invalid image URL');
-                                        setImageUrl('');
-                                    }}
-                                />
-                            </View>
-                        )}
-
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Event Title"
-                            value={title}
-                            onChangeText={setTitle}
-                            placeholderTextColor="#afafaf"
-                            onFocus={() => handleFocus(250)}
-                        />
-                        <TextInput
-                            style={[styles.input, styles.multilineInput]}
-                            placeholder="Description"
-                            value={description}
-                            onChangeText={setDescription}
-                            multiline
-                            placeholderTextColor="#afafaf"
-                        />
-
-                        <View style={styles.dateContainer}>
-                            {showCalendar && (
-                                <View style={styles.calendarContainer}>
-                                    <CalendarPicker
-                                        onDateChange={(date) => handleDateSelect(date as Date)}
-                                        minDate={new Date()}
-                                        selectedDayColor="#3D8D7A"
-                                        selectedDayTextColor="#FFFFFF"
-                                        todayBackgroundColor="#f2f2f2"
-                                        width={320}
+                <View style={styles.modalWrapper}>
+                    <ScrollView 
+                        ref={scrollViewRef}
+                        contentContainerStyle={styles.scrollContainer}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={true}
+                    >
+                        <View style={styles.modalContent}>
+                            <Text style={styles.title}>Create New Event</Text>
+                            
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Image URL (e.g., https://example.com/image.jpg)"
+                                value={imageUrl}
+                                onChangeText={setImageUrl}
+                                placeholderTextColor="#afafaf"
+                                autoCapitalize="none"
+                                onFocus={() => handleFocus(0)}
+                            />
+                            
+                            {imageUrl && (
+                                <View style={styles.imagePreview}>
+                                    <Image 
+                                        source={{ uri: imageUrl }} 
+                                        style={styles.previewImage}
+                                        onError={() => {
+                                            alert('Invalid image URL');
+                                            setImageUrl('');
+                                        }}
                                     />
                                 </View>
                             )}
 
-                            <View style={styles.timePickerContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Event Title"
+                                value={title}
+                                onChangeText={setTitle}
+                                placeholderTextColor="#afafaf"
+                                onFocus={() => handleFocus(250)}
+                            />
+                            <TextInput
+                                style={[styles.input, styles.multilineInput]}
+                                placeholder="Description"
+                                value={description}
+                                onChangeText={setDescription}
+                                multiline
+                                placeholderTextColor="#afafaf"
+                            />
+
+                            <View style={styles.dateContainer}>
+                                {showCalendar && (
+                                    <View style={styles.calendarContainer}>
+                                        <CalendarPicker
+                                            onDateChange={(date) => handleDateSelect(date as Date)}
+                                            minDate={new Date()}
+                                            selectedDayColor="#3D8D7A"
+                                            selectedDayTextColor="#FFFFFF"
+                                            todayBackgroundColor="#f2f2f2"
+                                            width={320}
+                                        />
+                                    </View>
+                                )}
+
+                                <View style={styles.timePickerContainer}>
+                                    <TouchableOpacity 
+                                        style={styles.input}
+                                        onPress={() => setShowTimeDropdown(!showTimeDropdown)}
+                                    >
+                                        <Text style={[
+                                            styles.dateText,
+                                            !time && styles.placeholderText
+                                        ]}>
+                                            {time || 'Select Time'}
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {showTimeDropdown && (
+                                        <View style={styles.timeDropdownContainer}>
+                                            <View style={styles.timeInputsRow}>
+                                                <View style={styles.timeInputContainer}>
+                                                    <TextInput
+                                                        style={styles.timeInput}
+                                                        placeholder="HH"
+                                                        value={hour}
+                                                        onChangeText={(text) => {
+                                                            const num = parseInt(text);
+                                                            if ((num >= 1 && num <= 12) || text === '') {
+                                                                setHour(text);
+                                                            }
+                                                        }}
+                                                        keyboardType="number-pad"
+                                                        maxLength={2}
+                                                    />
+                                                    <Text style={styles.timeLabel}>Hour</Text>
+                                                </View>
+
+                                                <View style={styles.timeInputContainer}>
+                                                    <TextInput
+                                                        style={styles.timeInput}
+                                                        placeholder="MM"
+                                                        value={minute}
+                                                        onChangeText={(text) => {
+                                                            const num = parseInt(text);
+                                                            if ((num >= 0 && num <= 59) || text === '') {
+                                                                setMinute(text);
+                                                            }
+                                                        }}
+                                                        keyboardType="number-pad"
+                                                        maxLength={2}
+                                                    />
+                                                    <Text style={styles.timeLabel}>Minute</Text>
+                                                </View>
+
+                                                <View style={styles.timeInputContainer}>
+                                                    <TouchableOpacity
+                                                        style={styles.periodSelector}
+                                                        onPress={() => setPeriod(period === 'AM' ? 'PM' : 'AM')}
+                                                    >
+                                                        <Text style={styles.periodText}>{period}</Text>
+                                                    </TouchableOpacity>
+                                                    <Text style={styles.timeLabel}>AM/PM</Text>
+                                                </View>
+                                            </View>
+                                            
+                                            <TouchableOpacity 
+                                                style={styles.confirmTimeButton}
+                                                onPress={() => {
+                                                    handleTimeUpdate(hour, minute, period);
+                                                    setShowTimeDropdown(false);
+                                                }}
+                                            >
+                                                <Text style={styles.confirmTimeText}>Confirm Time</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+
                                 <TouchableOpacity 
                                     style={styles.input}
-                                    onPress={() => setShowTimeDropdown(!showTimeDropdown)}
+                                    onPress={() => setShowCalendar(!showCalendar)}
                                 >
                                     <Text style={[
                                         styles.dateText,
-                                        !time && styles.placeholderText
+                                        !date && styles.placeholderText
                                     ]}>
-                                        {time || 'Select Time'}
+                                        {date || 'Select Date'}
                                     </Text>
                                 </TouchableOpacity>
+                            </View>
 
-                                {showTimeDropdown && (
-                                    <View style={styles.timeDropdownContainer}>
-                                        <View style={styles.timeInputsRow}>
-                                            <View style={styles.timeInputContainer}>
-                                                <TextInput
-                                                    style={styles.timeInput}
-                                                    placeholder="HH"
-                                                    value={hour}
-                                                    onChangeText={(text) => {
-                                                        const num = parseInt(text);
-                                                        if ((num >= 1 && num <= 12) || text === '') {
-                                                            setHour(text);
-                                                        }
-                                                    }}
-                                                    keyboardType="number-pad"
-                                                    maxLength={2}
-                                                />
-                                                <Text style={styles.timeLabel}>Hour</Text>
-                                            </View>
-
-                                            <View style={styles.timeInputContainer}>
-                                                <TextInput
-                                                    style={styles.timeInput}
-                                                    placeholder="MM"
-                                                    value={minute}
-                                                    onChangeText={(text) => {
-                                                        const num = parseInt(text);
-                                                        if ((num >= 0 && num <= 59) || text === '') {
-                                                            setMinute(text);
-                                                        }
-                                                    }}
-                                                    keyboardType="number-pad"
-                                                    maxLength={2}
-                                                />
-                                                <Text style={styles.timeLabel}>Minute</Text>
-                                            </View>
-
-                                            <View style={styles.timeInputContainer}>
-                                                <TouchableOpacity
-                                                    style={styles.periodSelector}
-                                                    onPress={() => setPeriod(period === 'AM' ? 'PM' : 'AM')}
-                                                >
-                                                    <Text style={styles.periodText}>{period}</Text>
-                                                </TouchableOpacity>
-                                                <Text style={styles.timeLabel}>AM/PM</Text>
-                                            </View>
-                                        </View>
-                                        
-                                        <TouchableOpacity 
-                                            style={styles.confirmTimeButton}
-                                            onPress={() => {
-                                                handleTimeUpdate(hour, minute, period);
-                                                setShowTimeDropdown(false);
-                                            }}
-                                        >
-                                            <Text style={styles.confirmTimeText}>Confirm Time</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                            <View style={styles.locationSection}>
+                                <Text style={styles.label}>Location</Text>
+                                <LocationPicker 
+                                    onLocationSelect={handleLocationSelect}
+                                    initialLocation={location}
+                                />
+                                {location && (
+                                    <Text style={styles.selectedLocation}>
+                                        Selected: {location.city}, {location.state}
+                                    </Text>
                                 )}
                             </View>
 
-                            <TouchableOpacity 
-                                style={styles.input}
-                                onPress={() => setShowCalendar(!showCalendar)}
-                            >
-                                <Text style={[
-                                    styles.dateText,
-                                    !date && styles.placeholderText
-                                ]}>
-                                    {date || 'Select Date'}
-                                </Text>
-                            </TouchableOpacity>
+                            <View style={styles.buttonContainer}>
+                                <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                                    <Text style={styles.buttonText}>Create Event</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
+                                    <Text style={styles.buttonText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-
-                        <View style={[
-                            styles.remainingInputs,
-                            showCalendar && styles.hiddenInputs
-                        ]}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Location"
-                                value={location}
-                                onChangeText={setLocation}
-                                placeholderTextColor="#afafaf"
-                            />
-                        </View>
-
-                        <View style={styles.buttonContainer}>
-                            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                                <Text style={styles.buttonText}>Create Event</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-                                <Text style={styles.buttonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </ScrollView>
-                <TouchableOpacity 
-                    style={styles.dismissKeyboard}
-                    onPress={Keyboard.dismiss}
-                />
+                    </ScrollView>
+                </View>
             </KeyboardAvoidingView>
         </Modal>
     );
 }
 
 const styles = StyleSheet.create({
-    scrollContainer: {
-        flexGrow: 1,
-        justifyContent: 'center',
-    },
     modalContainer: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
     },
-    modalContent: {
+    modalWrapper: {
+        maxHeight: '90%', // Take up 90% of screen height
+        marginHorizontal: 20,
+        marginVertical: 40,
         backgroundColor: 'white',
         borderRadius: 20,
+    },
+    scrollContainer: {
+        flexGrow: 1,
+        paddingVertical: 20,
+    },
+    modalContent: {
         padding: 20,
-        margin: 20,
-        marginTop: 50,
-        minHeight: '100%',
     },
     title: {
         fontSize: 24,
@@ -490,5 +513,20 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: '600',
+    },
+    locationSection: {
+        marginBottom: 20,
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 8,
+        color: '#333',
+    },
+    selectedLocation: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#333',
+        textAlign: 'center',
     },
 }); 

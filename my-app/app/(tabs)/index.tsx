@@ -83,12 +83,17 @@ export default function HomeScreen() {
             
             const events = querySnapshot.docs.map(doc => {
                 console.log('Event data:', doc.id, doc.data());
+                const data = doc.data();
+                const locationString = data.location ? 
+                    `${data.location.city}, ${data.location.state}` : 
+                    'Location not specified';
+
                 return {
                     id: doc.id,
-                    title: doc.data().title,
-                    date: doc.data().date,
-                    time: doc.data().time,
-                    location: doc.data().location
+                    title: data.title,
+                    date: data.date,
+                    time: data.time,
+                    location: locationString
                 };
             }) as Event[];
 

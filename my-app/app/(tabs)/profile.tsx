@@ -51,7 +51,7 @@ export default function ProfileScreen() {
     location: '',
   });
 
-  const [profileImage, setProfileImage] = useState<string>('https://via.placeholder.com/150');
+  const [profileImage, setProfileImage] = useState<string>('https://t3.ftcdn.net/jpg/00/64/67/80/360_F_64678017_zUpiZFjj04cnLri7oADnyMH0XBYyQghG.webp');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<keyof PersonalInfo | null>(null);
   const [editValue, setEditValue] = useState('');
