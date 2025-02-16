@@ -332,7 +332,11 @@ export default function ProfileScreen() {
               enablePanDownToClose={false}
               index={0}
               style={styles.bottomSheet}
-              handleIndicatorStyle={styles.bottomSheetIndicator}
+              handleComponent={() => (
+                <View style={styles.bottomSheetHandle}>
+                  <IconSymbol name="chevron.up" size={20} color="#2E7D32" />
+                </View>
+              )}
             >
               {renderBottomSheetContent()}
             </BottomSheet>
@@ -616,13 +620,27 @@ const styles = StyleSheet.create({
   },
   bottomSheetContent: {
     paddingBottom: 20,
+    paddingTop: 16,
   },
   bottomSheet: {
-    marginBottom: 49, // Height of tab bar
+    marginBottom: 49,
   },
-  bottomSheetIndicator: {
-    backgroundColor: '#B3D8A8',
-    width: 50,
+  bottomSheetHandle: {
+    position: 'absolute',
+    top: -24,
+    left: 0,
+    right: 0,
+    height: 40,
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 1,
   },
   background: {
     backgroundColor: '#B3D8A8',
