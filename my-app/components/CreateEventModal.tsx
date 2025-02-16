@@ -23,6 +23,18 @@ interface CreateEventModalProps {
     onEventCreated: () => void;
 }
 
+const TAGS = [
+    'FundraiserHelper',
+    'EventVolunteer',
+    'Tutoring',
+    'BeachCleanup',
+    'TreePlanting',
+    'DisasterRelief',
+    'MentalHealthSupport',
+    'PetRescue',
+    'SocialMediaForChange'
+];
+
 export default function CreateEventModal({ visible, onClose, onEventCreated }: CreateEventModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -37,11 +49,17 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [period, setPeriod] = useState('AM');
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     const handleSubmit = async () => {
         try {
             if (!imageUrl.startsWith('http')) {
                 alert('Please enter a valid image URL');
+                return;
+            }
+
+            if (selectedTags.length === 0) {
+                alert('Please select at least one tag');
                 return;
             }
 
@@ -52,6 +70,7 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 time,
                 location,
                 imageUrl,
+                tags: selectedTags,
             });
             
             onEventCreated();
@@ -63,6 +82,7 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
             setTime('');
             setLocation('');
             setImageUrl('');
+            setSelectedTags([]);
         } catch (error) {
             console.error('Error creating event:', error);
             alert('Failed to create event');
@@ -110,6 +130,14 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
         } catch (error) {
             alert('Error selecting image');
         }
+    };
+
+    const toggleTag = (tag: string) => {
+        setSelectedTags(prev => 
+            prev.includes(tag) 
+                ? prev.filter(t => t !== tag)
+                : [...prev, tag]
+        );
     };
 
     return (
@@ -169,6 +197,33 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                             multiline
                             placeholderTextColor="#afafaf"
                         />
+
+                        <View style={styles.tagSection}>
+                            <Text style={styles.tagTitle}>Select Event Tags</Text>
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.tagScrollView}
+                            >
+                                {TAGS.map((tag) => (
+                                    <TouchableOpacity
+                                        key={tag}
+                                        style={[
+                                            styles.tag,
+                                            selectedTags.includes(tag) && styles.selectedTag
+                                        ]}
+                                        onPress={() => toggleTag(tag)}
+                                    >
+                                        <Text style={[
+                                            styles.tagText,
+                                            selectedTags.includes(tag) && styles.selectedTagText
+                                        ]}>
+                                            #{tag}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
 
                         <View style={styles.dateContainer}>
                             {showCalendar && (
@@ -490,5 +545,36 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: '600',
+    },
+    tagSection: {
+        marginBottom: 15,
+    },
+    tagTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 10,
+    },
+    tagScrollView: {
+        flexGrow: 0,
+    },
+    tag: {
+        backgroundColor: '#fff',
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#3D8D7A',
+    },
+    selectedTag: {
+        backgroundColor: '#3D8D7A',
+    },
+    tagText: {
+        fontSize: 14,
+        color: '#3D8D7A',
+    },
+    selectedTagText: {
+        color: '#fff',
     },
 }); 
