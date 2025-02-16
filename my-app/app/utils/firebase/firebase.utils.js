@@ -15,7 +15,10 @@ import {
     updateDoc,
     setDoc,
     collection,
-    arrayUnion
+    arrayUnion,
+    query,
+    where,
+    getDocs
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Platform } from 'react-native';
@@ -40,11 +43,38 @@ export const db = getFirestore(app);
 // Initialize Firebase Storage
 export const storage = getStorage(app);
 
-export const logInWithEmailAndPassword = async (email, password) => {
+export const checkUsernameExists = async (username) => {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", username));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+};
+
+export const logInWithEmailAndPassword = async (emailOrUsername, password) => {
     try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        console.log("User signed in successfully:", result.user.uid);
-        return result;
+        // First check if input is an email
+        const isEmail = emailOrUsername.includes('@');
+        
+        if (isEmail) {
+            const result = await signInWithEmailAndPassword(auth, emailOrUsername, password);
+            return result;
+        } else {
+            // If username, first get the email associated with it
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("username", "==", emailOrUsername));
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                throw new Error("Username not found");
+            }
+
+            const userDoc = querySnapshot.docs[0];
+            const userEmail = userDoc.data().email;
+            
+            // Then sign in with the email
+            const result = await signInWithEmailAndPassword(auth, userEmail, password);
+            return result;
+        }
     } catch (err) {
         console.error("Error during sign in:", err);
         throw err;
@@ -53,11 +83,25 @@ export const logInWithEmailAndPassword = async (email, password) => {
 
 export const registerWithEmailAndPassword = async (email, password, userData) => {
     try {
+        // Validate username format
+        if (!userData.username) {
+            throw new Error("Username is required");
+        }
+
+        // Check if username already exists
+        const usernameExists = await checkUsernameExists(userData.username);
+        if (usernameExists) {
+            throw new Error("Username already taken");
+        }
+
         const res = await createUserWithEmailAndPassword(auth, email, password);
         const user = res.user;
         
-        await setDoc(doc(db, "users", user.uid), {
+        // Create user document with all fields
+        const userDocData = {
+            uid: user.uid,
             email: email,
+            username: userData.username,
             firstName: userData.firstName,
             lastName: userData.lastName,
             age: userData.age,
@@ -65,9 +109,9 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             state: userData.state,
             createdAt: new Date(),
             items: []
-        });
+        };
         
-        console.log("User registered successfully:", user.uid);
+        await setDoc(doc(db, "users", user.uid), userDocData);
         return user;
     } catch (err) {
         console.error("Error during registration:", err);

@@ -18,6 +18,8 @@ type AuthContextType = {
     setCity: (city: string) => void;
     state: string;
     setState: (state: string) => void;
+    username: string;
+    setUsername: (username: string) => void;
     handleSignIn: () => Promise<void>;
     handleSignUp: () => Promise<void>;
     navigateToSignUp: () => void;
@@ -38,33 +40,41 @@ export default function SignIn() {
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.container}>
-                    <Text style={styles.title}>Welcome to Vuzz</Text>
+                    <Text style={styles.logo}>Vuzz</Text>
+                    <Text style={styles.title}>Log in</Text>
+                    
                     <TextInput
                         style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor="#afafaf"
+                        placeholder="Email or Username"
+                        placeholderTextColor="#666"
                         value={email}
                         onChangeText={setEmail}
-                        keyboardType="email-address"
                         autoCapitalize="none"
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Password"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
                     />
-                    <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-                        <Text style={styles.buttonText}>Sign In</Text>
-                    </TouchableOpacity>
+
                     <TouchableOpacity 
-                        style={[styles.button, styles.secondaryButton]} 
-                        onPress={() => router.push("../auth/signup")}
+                        style={styles.loginButton} 
+                        onPress={handleSignIn}
                     >
-                        <Text style={styles.buttonText}>Sign Up</Text>
+                        <Text style={styles.buttonText}>Log in</Text>
                     </TouchableOpacity>
+
+                    <View style={styles.signupContainer}>
+                        <Text style={styles.signupText}>
+                            Don't have an account?{' '}
+                        </Text>
+                        <TouchableOpacity onPress={() => router.push("../auth/signup")}>
+                            <Text style={styles.signupLink}>Sign up</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -79,13 +89,14 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [age, setAge] = useState("");
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
+    const [username, setUsername] = useState("");
 
     const navigateToSignUp = () => {
         router.push("../auth/signup");
     };
 
     const handleSignUp = async () => {
-        if (!email || !password || !firstName || !lastName || !age || !city || !state) {
+        if (!email || !password || !firstName || !lastName || !age || !city || !state || !username) {
             alert('Please fill in all fields');
             return;
         }
@@ -95,7 +106,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                 lastName,
                 age,
                 city,
-                state
+                state,
+                username
             });
             if (user) {
                 console.log("Navigating to tabs...");
@@ -140,6 +152,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setCity,
             state,
             setState,
+            username,
+            setUsername,
             handleSignIn,
             handleSignUp,
             navigateToSignUp
@@ -159,42 +173,58 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        justifyContent: 'center',
         padding: 20,
-        backgroundColor: '#fff',
-        paddingBottom: 40,
+        backgroundColor: '#f0f7f0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logo: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#2E7D32',
+        marginBottom: 10,
     },
     title: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
+        color: '#2E7D32',
         marginBottom: 30,
-        textAlign: 'center',
-        color: '#333',
     },
     input: {
+        width: '80%',
         height: 50,
         borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-        marginBottom: 15,
+        borderColor: '#ccc',
+        borderRadius: 8,
         paddingHorizontal: 15,
+        marginBottom: 15,
         fontSize: 16,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: 'white',
     },
-    button: {
-        backgroundColor: '#007AFF',
-        padding: 15,
-        borderRadius: 10,
+    loginButton: {
+        width: '80%',
+        height: 50,
+        backgroundColor: '#4CAF50',
+        borderRadius: 25,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
-    },
-    secondaryButton: {
-        backgroundColor: '#34C759',
-        marginTop: 10,
+        marginBottom: 20,
     },
     buttonText: {
         color: 'white',
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '600',
+    },
+    signupContainer: {
+        flexDirection: 'row',
+        marginTop: 10,
+    },
+    signupText: {
+        color: '#666',
+        fontSize: 16,
+    },
+    signupLink: {
+        color: '#2196F3',
+        fontSize: 16,
     },
 });
