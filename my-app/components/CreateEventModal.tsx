@@ -13,6 +13,7 @@ import {
     Keyboard
 } from 'react-native';
 import { createEvent } from '../app/utils/firebase/firebase.utils';
+import CalendarPicker from 'react-native-calendar-picker';
 
 interface CreateEventModalProps {
     visible: boolean;
@@ -27,6 +28,7 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [time, setTime] = useState('');
     const [location, setLocation] = useState('');
     const [imageUrl, setImageUrl] = useState('');
+    const [showCalendar, setShowCalendar] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
 
     const handleSubmit = async () => {
@@ -65,6 +67,16 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
             y: y,
             animated: true
         });
+    };
+
+    const handleDateSelect = (selectedDate: Date) => {
+        const formattedDate = selectedDate.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+        });
+        setDate(formattedDate);
+        setShowCalendar(false);
     };
 
     return (
@@ -124,30 +136,53 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                             multiline
                             placeholderTextColor="#afafaf"
                         />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Date (MM/DD/YYYY)"
-                            value={date}
-                            onChangeText={setDate}
-                            placeholderTextColor="#afafaf"
-                            onFocus={() => handleFocus(300)}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Time"
-                            value={time}
-                            onChangeText={setTime}
-                            placeholderTextColor="#afafaf"
-                            onFocus={() => handleFocus(350)}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Location"
-                            value={location}
-                            onChangeText={setLocation}
-                            placeholderTextColor="#afafaf"
-                            onFocus={() => handleFocus(400)}
-                        />
+
+                        <View style={styles.dateContainer}>
+                            <TouchableOpacity 
+                                style={styles.input}
+                                onPress={() => setShowCalendar(!showCalendar)}
+                            >
+                                <Text style={[
+                                    styles.dateText,
+                                    !date && styles.placeholderText
+                                ]}>
+                                    {date || 'Select Date'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {showCalendar && (
+                                <View style={styles.calendarContainer}>
+                                    <CalendarPicker
+                                        onDateChange={(date) => handleDateSelect(date as Date)}
+                                        minDate={new Date()}
+                                        selectedDayColor="#3D8D7A"
+                                        selectedDayTextColor="#FFFFFF"
+                                        todayBackgroundColor="#f2f2f2"
+                                        width={320}
+                                    />
+                                </View>
+                            )}
+                        </View>
+
+                        <View style={[
+                            styles.remainingInputs,
+                            showCalendar && styles.hiddenInputs
+                        ]}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Time"
+                                value={time}
+                                onChangeText={setTime}
+                                placeholderTextColor="#afafaf"
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Location"
+                                value={location}
+                                onChangeText={setLocation}
+                                placeholderTextColor="#afafaf"
+                            />
+                        </View>
 
                         <View style={styles.buttonContainer}>
                             <TouchableOpacity style={styles.button} onPress={handleSubmit}>
@@ -245,5 +280,41 @@ const styles = StyleSheet.create({
         borderTopColor: '#ddd',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    dateText: {
+        fontSize: 16,
+        color: '#000',
+        paddingVertical: 12,
+    },
+    placeholderText: {
+        color: '#afafaf',
+    },
+    dateContainer: {
+        zIndex: 1,
+    },
+    calendarContainer: {
+        position: 'absolute',
+        top: 60,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 10,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    remainingInputs: {
+        opacity: 1,
+    },
+    hiddenInputs: {
+        opacity: 0,
+        height: 0,
+        marginBottom: 0,
     },
 }); 

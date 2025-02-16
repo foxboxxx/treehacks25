@@ -7,6 +7,7 @@ export default function SignUp() {
     const { 
         email, setEmail, 
         password, setPassword,
+        username, setUsername,
         firstName, setFirstName,
         lastName, setLastName,
         age, setAge,
@@ -33,67 +34,71 @@ export default function SignUp() {
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.container}>
+                    <Text style={styles.logo}>Vuzz</Text>
                     <Text style={styles.title}>Create Account</Text>
+                    
                     <TextInput
                         style={styles.input}
                         placeholder="First Name"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={firstName}
                         onChangeText={setFirstName}
-                        onFocus={() => handleFocus(0)}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Last Name"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={lastName}
                         onChangeText={setLastName}
-                        onFocus={() => handleFocus(50)}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Age"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={age}
                         onChangeText={setAge}
                         keyboardType="numeric"
-                        onFocus={() => handleFocus(100)}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="City"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={city}
                         onChangeText={setCity}
-                        onFocus={() => handleFocus(150)}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="State"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={state}
                         onChangeText={setState}
-                        onFocus={() => handleFocus(200)}
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        onFocus={() => handleFocus(250)}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Username"
+                        placeholderTextColor="#666"
+                        value={username}
+                        onChangeText={setUsername}
+                        autoCapitalize="none"
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Password"
-                        placeholderTextColor="#afafaf"
+                        placeholderTextColor="#666"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
-                        onFocus={() => handleFocus(300)}
                     />
+                    
                     <TouchableOpacity style={styles.button} onPress={handleSignUp}>
                         <Text style={styles.buttonText}>Create Account</Text>
                     </TouchableOpacity>
@@ -114,37 +119,46 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 20,
-        backgroundColor: '#fff',
-        minHeight: '100%',
+        backgroundColor: '#f0f7f0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logo: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#2E7D32',
+        marginBottom: 10,
     },
     title: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
+        color: '#2E7D32',
         marginBottom: 30,
-        textAlign: 'center',
-        color: '#333',
     },
     input: {
+        width: '80%',
         height: 50,
         borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-        marginBottom: 15,
+        borderColor: '#ccc',
+        borderRadius: 8,
         paddingHorizontal: 15,
+        marginBottom: 15,
         fontSize: 16,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: 'white',
     },
     button: {
-        backgroundColor: '#34C759',
-        padding: 15,
-        borderRadius: 10,
+        width: '80%',
+        height: 50,
+        backgroundColor: '#4CAF50',
+        borderRadius: 25,
+        justifyContent: 'center',
         alignItems: 'center',
         marginTop: 10,
     },
     buttonText: {
         color: 'white',
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '600',
     },
     dismissKeyboard: {
         height: 30,
