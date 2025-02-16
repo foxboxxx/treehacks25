@@ -2,6 +2,7 @@ import { createContext, useContext, useState, PropsWithChildren } from "react";
 import { router } from 'expo-router';
 import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { registerWithEmailAndPassword, logInWithEmailAndPassword } from "../../utils/firebase/firebase.utils";
+import Logo from '../../../components/Logo';
 
 type AuthContextType = {
     email: string;
@@ -37,48 +38,46 @@ export default function SignIn() {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1 }}
         >
-            <ScrollView 
-                contentContainerStyle={styles.scrollContainer}
-                keyboardShouldPersistTaps="handled"
-            >
-                <View style={styles.container}>
-                    <Text style={styles.logo}>Vuzz</Text>
-                    <Text style={styles.title}>Log in</Text>
-                    
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email or Username"
-                        placeholderTextColor="#666"
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password"
-                        placeholderTextColor="#666"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-
-                    <TouchableOpacity 
-                        style={styles.loginButton} 
-                        onPress={handleSignIn}
-                    >
-                        <Text style={styles.buttonText}>Log in</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.signupContainer}>
-                        <Text style={styles.signupText}>
-                            Don't have an account?{' '}
-                        </Text>
-                        <TouchableOpacity onPress={() => router.push("../auth/signup")}>
-                            <Text style={styles.signupLink}>Sign up</Text>
-                        </TouchableOpacity>
-                    </View>
+            <View style={styles.container}>
+                <View style={styles.logoContainer}>
+                    <Logo />
                 </View>
-            </ScrollView>
+                
+                <Text style={styles.title}>Log in</Text>
+                
+                <TextInput
+                    style={styles.input}
+                    placeholder="Email or Username"
+                    placeholderTextColor="#666"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor="#666"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                />
+
+                <TouchableOpacity 
+                    style={styles.loginButton} 
+                    onPress={handleSignIn}
+                >
+                    <Text style={styles.buttonText}>Log in</Text>
+                </TouchableOpacity>
+
+                <View style={styles.signupContainer}>
+                    <Text style={styles.signupText}>
+                        Don't have an account?{' '}
+                    </Text>
+                    <TouchableOpacity onPress={() => router.push("../auth/signup")}>
+                        <Text style={styles.signupLink}>Sign up</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
         </KeyboardAvoidingView>
     );
 }
@@ -177,9 +176,6 @@ export const useAuth = () => {
 };
 
 const styles = StyleSheet.create({
-    scrollContainer: {
-        flexGrow: 1,
-    },
     container: {
         flex: 1,
         padding: 20,
@@ -187,11 +183,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    logo: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#2E7D32',
-        marginBottom: 10,
+    logoContainer: {
+        marginBottom: 20,
+        alignItems: 'center',
     },
     title: {
         fontSize: 28,

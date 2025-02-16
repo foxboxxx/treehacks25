@@ -21,7 +21,13 @@ import {
     getDocs,
     limit,
     orderBy,
-    onSnapshot
+    onSnapshot,
+    addDoc,
+    serverTimestamp,
+    increment,
+    collectionGroup,
+    writeBatch,
+    deleteDoc
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Platform } from 'react-native';
@@ -46,11 +52,30 @@ export const db = getFirestore(app);
 // Initialize Firebase Storage
 export const storage = getStorage(app);
 
+// Check if username exists
 export const checkUsernameExists = async (username) => {
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", username));
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", username.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty;
+    } catch (error) {
+        console.error("Error checking username:", error);
+        throw error;
+    }
+};
+
+// Check if email exists
+export const checkEmailExists = async (email) => {
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty;
+    } catch (error) {
+        console.error("Error checking email:", error);
+        throw error;
+    }
 };
 
 export const logInWithEmailAndPassword = async (emailOrUsername, password) => {
@@ -91,20 +116,44 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             throw new Error("Username is required");
         }
 
+        // Convert to lowercase for consistency
+        const lowerEmail = email.toLowerCase();
+        const lowerUsername = userData.username.toLowerCase();
+
         // Check if username already exists
-        const usernameExists = await checkUsernameExists(userData.username);
+        const usernameExists = await checkUsernameExists(lowerUsername);
         if (usernameExists) {
             throw new Error("Username already taken");
         }
 
-        const res = await createUserWithEmailAndPassword(auth, email, password);
+        // Check if email already exists
+        const emailExists = await checkEmailExists(lowerEmail);
+        if (emailExists) {
+            throw new Error("Email already registered");
+        }
+
+        // Add additional validation
+        if (lowerUsername.length < 3) {
+            throw new Error("Username must be at least 3 characters long");
+        }
+
+        if (lowerUsername.length > 20) {
+            throw new Error("Username must be less than 20 characters");
+        }
+
+        // Check username format (letters, numbers, underscores only)
+        if (!/^[a-zA-Z0-9_]+$/.test(lowerUsername)) {
+            throw new Error("Username can only contain letters, numbers, and underscores");
+        }
+
+        const res = await createUserWithEmailAndPassword(auth, lowerEmail, password);
         const user = res.user;
         
         // Create user document with all fields
         const userDocData = {
             uid: user.uid,
-            email: email,
-            username: userData.username,
+            email: lowerEmail,
+            username: lowerUsername,
             firstName: userData.firstName,
             lastName: userData.lastName,
             age: userData.age,
@@ -119,6 +168,12 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
         await setDoc(doc(db, "users", user.uid), userDocData);
         return user;
     } catch (err) {
+        if (err.code === 'auth/email-already-in-use') {
+            throw new Error("Email already registered");
+        }
+        if (err.code === 'auth/weak-password') {
+            throw new Error("Password should be at least 6 characters");
+        }
         console.error("Error during registration:", err);
         throw err;
     }
@@ -223,24 +278,22 @@ export const startChat = async (otherUserId) => {
         const currentUserId = auth.currentUser?.uid;
         if (!currentUserId) throw new Error("User not authenticated");
 
-        // Create a unique chat ID by sorting user IDs
-        const chatId = [currentUserId, otherUserId].sort().join('_');
+        const sortedIds = [currentUserId, otherUserId].sort();
+        const chatId = sortedIds.join('_');
+
+        // Only check if chat exists, don't create it yet
         const chatRef = doc(db, "chats", chatId);
         const chatDoc = await getDoc(chatRef);
 
         if (!chatDoc.exists()) {
-            // Create new chat
-            await setDoc(chatRef, {
-                participants: [currentUserId, otherUserId],
-                createdAt: new Date(),
-                lastMessage: null,
-                lastMessageTime: null
-            });
+            // Don't create the chat document here
+            // It will be created when the first message is sent
+            console.log("Chat doesn't exist yet");
         }
 
         return chatId;
     } catch (error) {
-        console.error("Error starting chat:", error);
+        console.error("Error checking chat:", error);
         throw error;
     }
 };
@@ -248,23 +301,51 @@ export const startChat = async (otherUserId) => {
 // Send a message
 export const sendMessage = async (chatId, text) => {
     try {
-        const messageRef = doc(collection(db, "chats", chatId, "messages"));
-        const message = {
-            id: messageRef.id,
+        const chatRef = doc(db, "chats", chatId);
+        const chatDoc = await getDoc(chatRef);
+        const currentUserId = auth.currentUser.uid;
+
+        // If chat doesn't exist, create it with the first message
+        if (!chatDoc.exists()) {
+            const [user1, user2] = chatId.split('_');
+            const otherUserId = user1 === currentUserId ? user2 : user1;
+
+            // Create chat document first
+            await setDoc(chatRef, {
+                participants: [currentUserId, otherUserId],
+                createdAt: serverTimestamp(),
+                lastMessage: text,
+                lastMessageTime: serverTimestamp(),
+                [`${currentUserId}_unread`]: 0,
+                [`${otherUserId}_unread`]: 1
+            });
+        }
+
+        // Now add the message
+        const messagesRef = collection(db, "chats", chatId, "messages");
+        const messageData = {
             text,
-            senderId: auth.currentUser.uid,
-            timestamp: new Date(),
+            senderId: currentUserId,
+            timestamp: serverTimestamp(),
+            read: false
         };
         
-        await setDoc(messageRef, message);
+        const newMessageRef = await addDoc(messagesRef, messageData);
         
-        // Update last message in chat
-        await updateDoc(doc(db, "chats", chatId), {
-            lastMessage: text,
-            lastMessageTime: new Date()
-        });
+        // Update last message only if chat already existed
+        if (chatDoc.exists()) {
+            const chatData = chatDoc.data();
+            const otherUserId = chatData.participants.find(id => id !== currentUserId);
+            
+            await updateDoc(chatRef, {
+                lastMessage: text,
+                lastMessageTime: serverTimestamp(),
+                messages: arrayUnion(newMessageRef.id),
+                [`${otherUserId}_unread`]: increment(1),
+                [`${currentUserId}_unread`]: 0
+            });
+        }
         
-        return message;
     } catch (error) {
         console.error("Error sending message:", error);
         throw error;
@@ -273,20 +354,43 @@ export const sendMessage = async (chatId, text) => {
 
 // Subscribe to messages
 export const subscribeToMessages = (chatId, callback) => {
-    const messagesRef = collection(db, "chats", chatId, "messages");
-    const q = query(messagesRef, orderBy("timestamp", "asc"));
-    
-    return onSnapshot(q, (snapshot) => {
-        const messages = [];
-        snapshot.forEach((doc) => {
-            messages.push({ ...doc.data() });
+    try {
+        const messagesRef = collection(db, "chats", chatId, "messages");
+        const q = query(messagesRef, orderBy("timestamp", "asc"));
+        
+        const unsubscribe = onSnapshot(q, {
+            next: (snapshot) => {
+                // Only process if there are actual changes
+                if (!snapshot.metadata.hasPendingWrites) {
+                    const messages = [];
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        messages.push({
+                            id: doc.id,
+                            text: data.text,
+                            senderId: data.senderId,
+                            timestamp: data.timestamp,
+                            read: data.read
+                        });
+                    });
+                    callback(messages);
+                }
+            },
+            error: (error) => {
+                console.error("Error in messages subscription:", error);
+            }
         });
-        callback(messages);
-    });
+
+        return unsubscribe;
+    } catch (error) {
+        console.error("Error setting up message subscription:", error);
+        return () => {};
+    }
 };
 
 export const getUserChats = async (userId) => {
     try {
+        // Query chats where user is a participant (without sorting)
         const chatsRef = collection(db, "chats");
         const q = query(
             chatsRef,
@@ -297,26 +401,66 @@ export const getUserChats = async (userId) => {
         const chats = [];
         
         for (const docSnapshot of querySnapshot.docs) {
-            const chatData = docSnapshot.data();
-            const otherUserId = chatData.participants.find(id => id !== userId);
-            const otherUserRef = doc(db, "users", otherUserId);
-            const otherUserDoc = await getDoc(otherUserRef);
-            const otherUserData = otherUserDoc.data();
-            
-            chats.push({
-                chatId: docSnapshot.id,
-                otherUsername: otherUserData.username,
-                lastMessage: chatData.lastMessage,
-                lastMessageTime: chatData.lastMessageTime?.toDate(),
-                profileImage: otherUserData.profileImage
-            });
+            try {
+                const chatData = docSnapshot.data();
+                const otherUserId = chatData.participants.find(id => id !== userId);
+                
+                if (!otherUserId) continue;
+
+                const otherUserRef = doc(db, "users", otherUserId);
+                const otherUserDoc = await getDoc(otherUserRef);
+                const otherUserData = otherUserDoc.data();
+                
+                if (otherUserData && otherUserData.username) {
+                    const lastMessageTime = chatData.lastMessageTime ? 
+                        new Date(chatData.lastMessageTime.seconds * 1000) : 
+                        new Date();
+
+                    chats.push({
+                        chatId: docSnapshot.id,
+                        otherUsername: otherUserData.username,
+                        lastMessage: chatData.lastMessage || 'No messages yet',
+                        lastMessageTime,
+                        profileImage: otherUserData.profileImage || 'https://via.placeholder.com/50',
+                        unreadCount: chatData[`${userId}_unread`] || 0
+                    });
+                }
+            } catch (error) {
+                console.error(`Error processing chat ${docSnapshot.id}:`, error);
+                continue;
+            }
         }
         
-        return chats.sort((a, b) => 
-            (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0)
-        );
+        // Sort in memory instead
+        return chats.sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
     } catch (error) {
         console.error("Error getting user chats:", error);
+        throw error;
+    }
+};
+
+// Delete chat and all its messages
+export const deleteChat = async (chatId) => {
+    try {
+        // Get reference to chat document and messages subcollection
+        const chatRef = doc(db, "chats", chatId);
+        const messagesRef = collection(db, "chats", chatId, "messages");
+
+        // Delete all messages in the subcollection first
+        const messagesSnapshot = await getDocs(messagesRef);
+        const batch = writeBatch(db);
+
+        messagesSnapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        // Execute the batch delete for messages
+        await batch.commit();
+
+        // Finally delete the chat document itself
+        await deleteDoc(chatRef);
+    } catch (error) {
+        console.error("Error deleting chat:", error);
         throw error;
     }
 };

@@ -7,11 +7,15 @@ import {
     FlatList, 
     TouchableOpacity,
     SafeAreaView,
-    Image
+    Image,
+    Alert,
+    ScrollView
 } from 'react-native';
-import { searchUsers, startChat, getUserChats } from '../utils/firebase/firebase.utils';
+import { searchUsers, startChat, getUserChats, deleteChat } from '../utils/firebase/firebase.utils';
 import { router } from 'expo-router';
 import { auth } from '../utils/firebase/firebase.utils';
+import { collection, query, where, orderBy, onSnapshot, getDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../utils/firebase/firebase.utils';
 
 interface User {
     username: string;
@@ -25,6 +29,7 @@ interface ChatPreview {
     lastMessage: string;
     lastMessageTime: Date;
     profileImage?: string;
+    unreadCount: number;
 }
 
 export default function Messages() {
@@ -32,15 +37,54 @@ export default function Messages() {
     const [searchResults, setSearchResults] = useState<User[]>([]);
     const [recentChats, setRecentChats] = useState<ChatPreview[]>([]);
 
-    // Load chat history
+    // Subscribe to chat updates
     useEffect(() => {
-        const loadChats = async () => {
-            if (auth.currentUser) {
-                const chats = await getUserChats(auth.currentUser.uid);
-                setRecentChats(chats);
+        if (!auth.currentUser) return;
+
+        const chatsRef = collection(db, "chats");
+        const q = query(
+            chatsRef,
+            where("participants", "array-contains", auth.currentUser.uid),
+            orderBy("lastMessageTime", "desc")
+        );
+
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+            const chatsData = [];
+            for (const docSnap of snapshot.docs) {
+                try {
+                    const chatData = docSnap.data();
+                    const otherUserId = chatData.participants.find(
+                        (id: string) => id !== auth.currentUser?.uid
+                    );
+                    
+                    if (!otherUserId) continue;
+
+                    const otherUserRef = doc(db, "users", otherUserId);
+                    const otherUserDoc = await getDoc(otherUserRef);
+                    const otherUserData = otherUserDoc.data() || {};
+
+                    if (otherUserData.username) {
+                        const lastMessageTime = chatData.lastMessageTime ? 
+                            new Date(chatData.lastMessageTime.seconds * 1000) : 
+                            new Date();
+
+                        chatsData.push({
+                            chatId: docSnap.id,
+                            otherUsername: otherUserData.username,
+                            lastMessage: chatData.lastMessage || 'No messages yet',
+                            lastMessageTime,
+                            profileImage: otherUserData.profileImage || 'https://via.placeholder.com/50',
+                            unreadCount: chatData[`${auth.currentUser?.uid}_unread`] || 0  // Fixed null check
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error processing chat ${docSnap.id}:`, error);
+                }
             }
-        };
-        loadChats();
+            setRecentChats(chatsData);
+        });
+
+        return () => unsubscribe();
     }, []);
 
     // Search users as typing
@@ -72,20 +116,65 @@ export default function Messages() {
         }
     };
 
-    const handleChatSelect = (chat: ChatPreview) => {
-        router.push({
-            pathname: "/(chat)/[id]",
-            params: { 
-                id: chat.chatId,
-                username: chat.otherUsername
+    const handleChatSelect = async (chat: ChatPreview) => {
+        try {
+            // Mark messages as read when entering chat
+            if (chat.unreadCount > 0) {
+                const chatRef = doc(db, "chats", chat.chatId);
+                await updateDoc(chatRef, {
+                    [`${auth.currentUser?.uid}_unread`]: 0  // Reset unread count
+                });
             }
-        });
+
+            router.push({
+                pathname: "/(chat)/[id]",
+                params: { 
+                    id: chat.chatId,
+                    username: chat.otherUsername
+                }
+            });
+        } catch (error) {
+            console.error('Error selecting chat:', error);
+        }
+    };
+
+    const handleDeleteChat = async (chat: ChatPreview) => {
+        try {
+            Alert.alert(
+                "Delete Chat",
+                "Are you sure you want to delete this chat? This will delete all messages and cannot be undone.",
+                [
+                    {
+                        text: "Cancel",
+                        style: "cancel"
+                    },
+                    {
+                        text: "Delete",
+                        onPress: async () => {
+                            try {
+                                await deleteChat(chat.chatId);
+                            } catch (error) {
+                                console.error('Error deleting chat:', error);
+                                Alert.alert("Error", "Failed to delete chat. Please try again.");
+                            }
+                        },
+                        style: "destructive"
+                    }
+                ]
+            );
+        } catch (error) {
+            console.error('Error in delete chat dialog:', error);
+        }
     };
 
     const renderChatItem = ({ item }: { item: ChatPreview }) => (
         <TouchableOpacity 
-            style={styles.chatItem}
+            style={[
+                styles.chatItem,
+                item.unreadCount > 0 && { backgroundColor: '#B3D8A8' }
+            ]}
             onPress={() => handleChatSelect(item)}
+            onLongPress={() => handleDeleteChat(item)}
         >
             <Image 
                 source={{ uri: item.profileImage || 'https://via.placeholder.com/50' }}
@@ -140,6 +229,7 @@ export default function Messages() {
                     renderItem={renderChatItem}
                     keyExtractor={(item) => item.chatId}
                     style={styles.chatList}
+                    contentContainerStyle={{ paddingBottom: 100 }}
                 />
             )}
         </SafeAreaView>
@@ -216,6 +306,28 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#999',
         marginLeft: 10,
+    },
+    nameContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    unreadBadge: {
+        backgroundColor: '#3D8D7A',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 6,
+    },
+    unreadCount: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    unreadChatItem: {
+        backgroundColor: '#B3D8A8',  // Highlight color for unread messages
     },
 });
   
