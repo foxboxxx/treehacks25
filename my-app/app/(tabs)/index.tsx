@@ -192,48 +192,28 @@ export default function HomeScreen() {
                     <View style={styles.noEventsContainer}>
                         <Text style={styles.noEventsText}>
                             You haven't liked any events yet.
-
                         </Text>
-                        
-                        <View style={styles.upcomingEventsSection}>
-                            <Text style={styles.sectionTitle}>Your Upcoming Events</Text>
-                            
-                            {userEvents.length > 0 ? (
-                                <View style={styles.eventList}>
-                                    {userEvents.map(event => renderEvent({ item: event }))}
-                                </View>
-                            ) : (
-                                <View style={styles.noEventsContainer}>
-                                    <Text style={styles.noEventsText}>
-                                        You haven't signed up for any events yet.
-                                    </Text>
-                                    <TouchableOpacity 
-                                        style={styles.browseButton}
-                                        onPress={() => router.push('/(tabs)/swipe')}
-                                    >
-                                        <Text style={styles.browseButtonText}>
-                                            Browse Events in Vuzz Tab
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
-
-                        <View style={styles.createEventSection}>
-                            <Text style={styles.sectionTitle}>Create an Event</Text>
-                            <TouchableOpacity 
-                                style={styles.createButton}
-                                onPress={() => setModalVisible(true)}
-                            >
-                                <Text style={styles.createButtonText}>Create New Event</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </>
+                        <TouchableOpacity 
+                            style={styles.browseButton}
+                            onPress={() => router.push('/(tabs)/swipe')}
+                        >
+                            <Text style={styles.browseButtonText}>
+                                Browse Events in Vuzz Tab
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 )}
-                data={[]} // Empty data since we're using header component
-                renderItem={() => null}
-                contentContainerStyle={{ paddingBottom: 100 }}
-            />
+            </View>
+
+            <View style={styles.createEventSection}>
+                <Text style={styles.sectionTitle}>Create an Event</Text>
+                <TouchableOpacity 
+                    style={styles.createButton}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Text style={styles.createButtonText}>Create New Event</Text>
+                </TouchableOpacity>
+            </View>
 
             <CreateEventModal
                 visible={modalVisible}
