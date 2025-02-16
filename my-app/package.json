@@ -20,6 +20,7 @@
     "@expo-google-fonts/pacifico": "^0.2.3",
     "@expo-google-fonts/quicksand": "^0.2.3",
     "@expo/vector-icons": "^14.0.2",
+    "@gorhom/bottom-sheet": "^5.1.1",
     "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-firebase/app": "^21.10.0",
     "@react-native-firebase/firestore": "^21.10.0",

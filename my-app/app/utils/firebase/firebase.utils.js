@@ -162,7 +162,8 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             createdAt: new Date(),
             items: [],
             likedEvents: new Array(),
-            dislikedEvents: new Array()
+            dislikedEvents: new Array(),
+            tags: [],
         };
         
         await setDoc(doc(db, "users", user.uid), userDocData);
@@ -190,6 +191,7 @@ export const createEvent = async (eventData) => {
             time: eventData.time,
             location: eventData.location,
             imageUrl: eventData.imageUrl,
+            tags: eventData.tags,
             createdAt: new Date(),
             createdBy: auth.currentUser.uid
         });
@@ -281,19 +283,26 @@ export const startChat = async (otherUserId) => {
         const sortedIds = [currentUserId, otherUserId].sort();
         const chatId = sortedIds.join('_');
 
-        // Only check if chat exists, don't create it yet
+        // Check if chat exists
         const chatRef = doc(db, "chats", chatId);
         const chatDoc = await getDoc(chatRef);
 
+        // Create chat document if it doesn't exist
         if (!chatDoc.exists()) {
-            // Don't create the chat document here
-            // It will be created when the first message is sent
-            console.log("Chat doesn't exist yet");
+            await setDoc(chatRef, {
+                participants: [currentUserId, otherUserId],
+                createdAt: serverTimestamp(),
+                lastMessage: '',
+                lastMessageTime: serverTimestamp(),
+                [`${currentUserId}_unread`]: 0,
+                [`${otherUserId}_unread`]: 0,
+                messages: []
+            });
         }
 
         return chatId;
     } catch (error) {
-        console.error("Error checking chat:", error);
+        console.error("Error starting chat:", error);
         throw error;
     }
 };
@@ -304,24 +313,24 @@ export const sendMessage = async (chatId, text) => {
         const chatRef = doc(db, "chats", chatId);
         const chatDoc = await getDoc(chatRef);
         const currentUserId = auth.currentUser.uid;
+        const [user1, user2] = chatId.split('_');
+        const otherUserId = user1 === currentUserId ? user2 : user1;
 
-        // If chat doesn't exist, create it with the first message
+        // Always create chat document if it doesn't exist
         if (!chatDoc.exists()) {
-            const [user1, user2] = chatId.split('_');
-            const otherUserId = user1 === currentUserId ? user2 : user1;
-
-            // Create chat document first
+            // Create chat document for both users
             await setDoc(chatRef, {
                 participants: [currentUserId, otherUserId],
                 createdAt: serverTimestamp(),
                 lastMessage: text,
                 lastMessageTime: serverTimestamp(),
                 [`${currentUserId}_unread`]: 0,
-                [`${otherUserId}_unread`]: 1
+                [`${otherUserId}_unread`]: 1,
+                messages: []
             });
         }
 
-        // Now add the message
+        // Add the message
         const messagesRef = collection(db, "chats", chatId, "messages");
         const messageData = {
             text,
@@ -332,19 +341,14 @@ export const sendMessage = async (chatId, text) => {
         
         const newMessageRef = await addDoc(messagesRef, messageData);
         
-        // Update last message only if chat already existed
-        if (chatDoc.exists()) {
-            const chatData = chatDoc.data();
-            const otherUserId = chatData.participants.find(id => id !== currentUserId);
-            
-            await updateDoc(chatRef, {
-                lastMessage: text,
-                lastMessageTime: serverTimestamp(),
-                messages: arrayUnion(newMessageRef.id),
-                [`${otherUserId}_unread`]: increment(1),
-                [`${currentUserId}_unread`]: 0
-            });
-        }
+        // Update last message
+        await updateDoc(chatRef, {
+            lastMessage: text,
+            lastMessageTime: serverTimestamp(),
+            messages: arrayUnion(newMessageRef.id),
+            [`${otherUserId}_unread`]: increment(1),
+            [`${currentUserId}_unread`]: 0
+        });
         
     } catch (error) {
         console.error("Error sending message:", error);

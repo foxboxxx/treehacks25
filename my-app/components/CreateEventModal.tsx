@@ -33,6 +33,18 @@ interface LocationData {
     state: string;
 }
 
+const TAGS = [
+    'FundraiserHelper',
+    'EventVolunteer',
+    'Tutoring',
+    'BeachCleanup',
+    'TreePlanting',
+    'DisasterRelief',
+    'MentalHealthSupport',
+    'PetRescue',
+    'SocialMediaForChange'
+];
+
 export default function CreateEventModal({ visible, onClose, onEventCreated }: CreateEventModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -47,15 +59,23 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const [location, setLocation] = useState<LocationData | null>(null);
-
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  
     const handleSubmit = async () => {
         if (!title || !description || !date || !time || !location) {
             Alert.alert('Error', 'Please fill in all fields including location');
             return;
         }
-
+      
+        if (selectedTags.length === 0) {
+            alert('Please select at least one tag');
+            return;
+        }
         try {
             const eventData = {
+
+
+            await createEvent({
                 title,
                 description,
                 date,
@@ -67,9 +87,12 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                     longitude: location.longitude
                 },
                 imageUrl,
+                tags: selectedTags,
             };
 
             await createEvent(eventData);
+            });
+            
             onEventCreated();
             onClose();
             
@@ -80,6 +103,7 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
             setTime('');
             setImageUrl('');
             setLocation(null);
+            setSelectedTags([]);
         } catch (error) {
             console.error('Error creating event:', error);
             Alert.alert('Error', 'Failed to create event');
@@ -132,6 +156,13 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const handleLocationSelect = (locationData: LocationData) => {
         setLocation(locationData);
     };
+    const toggleTag = (tag: string) => {
+        setSelectedTags(prev => 
+            prev.includes(tag) 
+                ? prev.filter(t => t !== tag)
+                : [...prev, tag]
+        );
+    };
 
     return (
         <Modal
@@ -176,36 +207,60 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                                 </View>
                             )}
 
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Event Title"
-                                value={title}
-                                onChangeText={setTitle}
-                                placeholderTextColor="#afafaf"
-                                onFocus={() => handleFocus(250)}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.multilineInput]}
-                                placeholder="Description"
-                                value={description}
-                                onChangeText={setDescription}
-                                multiline
-                                placeholderTextColor="#afafaf"
-                            />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Event Title"
+                            value={title}
+                            onChangeText={setTitle}
+                            placeholderTextColor="#afafaf"
+                            onFocus={() => handleFocus(250)}
+                        />
+                        <TextInput
+                            style={[styles.input, styles.multilineInput]}
+                            placeholder="Description"
+                            value={description}
+                            onChangeText={setDescription}
+                            multiline
+                            placeholderTextColor="#afafaf"
+                        />
 
-                            <View style={styles.dateContainer}>
-                                {showCalendar && (
-                                    <View style={styles.calendarContainer}>
-                                        <CalendarPicker
-                                            onDateChange={(date) => handleDateSelect(date as Date)}
-                                            minDate={new Date()}
-                                            selectedDayColor="#3D8D7A"
-                                            selectedDayTextColor="#FFFFFF"
-                                            todayBackgroundColor="#f2f2f2"
-                                            width={320}
-                                        />
-                                    </View>
-                                )}
+                        <View style={styles.tagSection}>
+                            <Text style={styles.tagTitle}>Select Event Tags</Text>
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.tagScrollView}
+                            >
+                                {TAGS.map((tag) => (
+                                    <TouchableOpacity
+                                        key={tag}
+                                        style={[
+                                            styles.tag,
+                                            selectedTags.includes(tag) && styles.selectedTag
+                                        ]}
+                                        onPress={() => toggleTag(tag)}
+                                    >
+                                        <Text style={[
+                                            styles.tagText,
+                                            selectedTags.includes(tag) && styles.selectedTagText
+                                        ]}>
+                                            #{tag}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        <View style={styles.dateContainer}>
+                            {showCalendar && (
+                                <View style={styles.calendarContainer}>
+                                    <CalendarPicker
+                                        onDateChange={(date) => handleDateSelect(date as Date)}
+                                        minDate={new Date()}
+                                        selectedDayColor="#3D8D7A"
+                                        selectedDayTextColor="#FFFFFF"
+                                        todayBackgroundColor="#f2f2f2"
+                                        width={320}
 
                                 <View style={styles.timePickerContainer}>
                                     <TouchableOpacity 
@@ -514,6 +569,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+                                      
     locationSection: {
         marginBottom: 20,
     },
@@ -528,5 +584,36 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
         textAlign: 'center',
+    },
+    tagSection: {
+        marginBottom: 15,
+    },
+    tagTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 10,
+    },
+    tagScrollView: {
+        flexGrow: 0,
+    },
+    tag: {
+        backgroundColor: '#fff',
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#3D8D7A',
+    },
+    selectedTag: {
+        backgroundColor: '#3D8D7A',
+    },
+    tagText: {
+        fontSize: 14,
+        color: '#3D8D7A',
+    },
+    selectedTagText: {
+        color: '#fff',
     },
 }); 

@@ -10,7 +10,8 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Keyboard
+    Keyboard,
+    KeyboardEvent
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { sendMessage, subscribeToMessages } from '../utils/firebase/firebase.utils';
@@ -30,40 +31,62 @@ interface Message {
 export default function ChatScreen() {
     const { id, username } = useLocalSearchParams<{ id: string; username: string }>();
     const [messages, setMessages] = useState<Message[]>([]);
+    const [localMessages, setLocalMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const scrollViewRef = useRef<ScrollView>(null);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     useEffect(() => {
         if (!id) return;
         
-        // Initial fetch of messages
         const unsubscribe = subscribeToMessages(id, (updatedMessages: Message[]) => {
-            setMessages(prev => {
-                // Only update if messages are different
-                if (JSON.stringify(prev) !== JSON.stringify(updatedMessages)) {
-                    return updatedMessages;
-                }
-                return prev;
-            });
+            setMessages(updatedMessages);
+            setLocalMessages(updatedMessages);
         });
 
         return () => unsubscribe();
     }, [id]);
+
+    useEffect(() => {
+        const keyboardWillShow = (event: KeyboardEvent) => {
+            setKeyboardHeight(event.endCoordinates.height);
+        };
+
+        const keyboardWillHide = () => {
+            setKeyboardHeight(0);
+        };
+
+        const showSubscription = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
+        const hideSubscription = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, []);
 
     const handleSend = async () => {
         if (!newMessage.trim() || !id || isSending) return;
 
         try {
             setIsSending(true);
+            const tempMessage = {
+                id: Date.now().toString(),
+                text: newMessage,
+                senderId: auth.currentUser?.uid || '',
+                timestamp: { seconds: Date.now() / 1000, nanoseconds: 0 },
+                read: false
+            };
+            setLocalMessages(prev => [...prev, tempMessage]);
+            
             await sendMessage(id, newMessage);
             setNewMessage('');
             Keyboard.dismiss();
-            // Scroll to bottom after sending
-            flatListRef.current?.scrollToEnd({ animated: true });
         } catch (error) {
             console.error('Error sending message:', error);
+            setLocalMessages(messages);
         } finally {
             setIsSending(false);
         }
@@ -81,15 +104,15 @@ export default function ChatScreen() {
                     headerTintColor: '#2E7D32',
                 }}
             />
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.container}
-                keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-            >
-                <SafeAreaView style={styles.container}>
+            <View style={styles.container}>
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={{ flex: 1 }}
+                    keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+                >
                     <FlatList
                         ref={flatListRef}
-                        data={messages}
+                        data={localMessages}
                         renderItem={({ item }) => {
                             const isCurrentUser = item.senderId === auth.currentUser?.uid;
                             let dateString = '';
@@ -124,12 +147,17 @@ export default function ChatScreen() {
                             );
                         }}
                         keyExtractor={(item) => item.id}
+                        contentContainerStyle={[
+                            styles.messageListContent,
+                            { paddingBottom: keyboardHeight + 100 }
+                        ]}
                         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                        style={styles.messageList}
                     />
-
-                    <View style={styles.inputContainer}>
+                    
+                    <View style={[
+                        styles.inputContainer,
+                        { bottom: keyboardHeight }
+                    ]}>
                         <TextInput
                             style={styles.input}
                             value={newMessage}
@@ -150,13 +178,8 @@ export default function ChatScreen() {
                             </Text>
                         </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity 
-                        style={styles.dismissKeyboard}
-                        onPress={Keyboard.dismiss}
-                    />
-                </SafeAreaView>
-            </KeyboardAvoidingView>
+                </KeyboardAvoidingView>
+            </View>
         </>
     );
 }
@@ -166,9 +189,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
-    messageList: {
-        flex: 1,
-        padding: 10,
+    messageListContent: {
+        paddingBottom: 150,
+        flexGrow: 1,
     },
     messageContainer: {
         margin: 8,
@@ -196,10 +219,16 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         flexDirection: 'row',
-        padding: 10,
         borderTopWidth: 1,
         borderTopColor: '#eee',
         backgroundColor: '#fff',
+        padding: 10,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 2,
     },
     input: {
         flex: 1,
@@ -227,13 +256,5 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#cccccc',
-    },
-    dismissKeyboard: {
-        height: 30,
-        backgroundColor: '#f0f0f0',
-        borderTopWidth: 1,
-        borderTopColor: '#ddd',
-        alignItems: 'center',
-        justifyContent: 'center',
     },
 }); 
