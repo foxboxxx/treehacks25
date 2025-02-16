@@ -15,6 +15,7 @@ import {
 import { createEvent } from '../app/utils/firebase/firebase.utils';
 import CalendarPicker from 'react-native-calendar-picker';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface CreateEventModalProps {
     visible: boolean;
@@ -30,6 +31,11 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [location, setLocation] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [hour, setHour] = useState('');
+    const [minute, setMinute] = useState('');
+    const [period, setPeriod] = useState('AM');
+    const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
 
     const handleSubmit = async () => {
@@ -78,6 +84,15 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
         });
         setDate(formattedDate);
         setShowCalendar(false);
+    };
+
+    const handleTimeUpdate = (newHour: string, newMinute: string, newPeriod: string) => {
+        const formattedHour = newHour.padStart(2, '0');
+        const formattedMinute = newMinute.padStart(2, '0');
+        setTime(`${formattedHour}:${formattedMinute} ${newPeriod}`);
+        setHour(newHour);
+        setMinute(newMinute);
+        setPeriod(newPeriod);
     };
 
     const pickImage = async () => {
@@ -156,18 +171,6 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                         />
 
                         <View style={styles.dateContainer}>
-                            <TouchableOpacity 
-                                style={styles.input}
-                                onPress={() => setShowCalendar(!showCalendar)}
-                            >
-                                <Text style={[
-                                    styles.dateText,
-                                    !date && styles.placeholderText
-                                ]}>
-                                    {date || 'Select Date'}
-                                </Text>
-                            </TouchableOpacity>
-
                             {showCalendar && (
                                 <View style={styles.calendarContainer}>
                                     <CalendarPicker
@@ -180,19 +183,98 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                                     />
                                 </View>
                             )}
+
+                            <View style={styles.timePickerContainer}>
+                                <TouchableOpacity 
+                                    style={styles.input}
+                                    onPress={() => setShowTimeDropdown(!showTimeDropdown)}
+                                >
+                                    <Text style={[
+                                        styles.dateText,
+                                        !time && styles.placeholderText
+                                    ]}>
+                                        {time || 'Select Time'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {showTimeDropdown && (
+                                    <View style={styles.timeDropdownContainer}>
+                                        <View style={styles.timeInputsRow}>
+                                            <View style={styles.timeInputContainer}>
+                                                <TextInput
+                                                    style={styles.timeInput}
+                                                    placeholder="HH"
+                                                    value={hour}
+                                                    onChangeText={(text) => {
+                                                        const num = parseInt(text);
+                                                        if ((num >= 1 && num <= 12) || text === '') {
+                                                            setHour(text);
+                                                        }
+                                                    }}
+                                                    keyboardType="number-pad"
+                                                    maxLength={2}
+                                                />
+                                                <Text style={styles.timeLabel}>Hour</Text>
+                                            </View>
+
+                                            <View style={styles.timeInputContainer}>
+                                                <TextInput
+                                                    style={styles.timeInput}
+                                                    placeholder="MM"
+                                                    value={minute}
+                                                    onChangeText={(text) => {
+                                                        const num = parseInt(text);
+                                                        if ((num >= 0 && num <= 59) || text === '') {
+                                                            setMinute(text);
+                                                        }
+                                                    }}
+                                                    keyboardType="number-pad"
+                                                    maxLength={2}
+                                                />
+                                                <Text style={styles.timeLabel}>Minute</Text>
+                                            </View>
+
+                                            <View style={styles.timeInputContainer}>
+                                                <TouchableOpacity
+                                                    style={styles.periodSelector}
+                                                    onPress={() => setPeriod(period === 'AM' ? 'PM' : 'AM')}
+                                                >
+                                                    <Text style={styles.periodText}>{period}</Text>
+                                                </TouchableOpacity>
+                                                <Text style={styles.timeLabel}>AM/PM</Text>
+                                            </View>
+                                        </View>
+                                        
+                                        <TouchableOpacity 
+                                            style={styles.confirmTimeButton}
+                                            onPress={() => {
+                                                handleTimeUpdate(hour, minute, period);
+                                                setShowTimeDropdown(false);
+                                            }}
+                                        >
+                                            <Text style={styles.confirmTimeText}>Confirm Time</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+
+                            <TouchableOpacity 
+                                style={styles.input}
+                                onPress={() => setShowCalendar(!showCalendar)}
+                            >
+                                <Text style={[
+                                    styles.dateText,
+                                    !date && styles.placeholderText
+                                ]}>
+                                    {date || 'Select Date'}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
                         <View style={[
                             styles.remainingInputs,
                             showCalendar && styles.hiddenInputs
                         ]}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Time"
-                                value={time}
-                                onChangeText={setTime}
-                                placeholderTextColor="#afafaf"
-                            />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Location"
@@ -308,11 +390,80 @@ const styles = StyleSheet.create({
         color: '#afafaf',
     },
     dateContainer: {
+        zIndex: 2,
+        position: 'relative',
+        marginBottom: 15,
+    },
+    timePickerContainer: {
+        marginTop: 10,
         zIndex: 1,
+    },
+    timeDropdownContainer: {
+        position: 'absolute',
+        top: 60,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    timeInputsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    timeInputContainer: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    timeInput: {
+        width: 60,
+        height: 40,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        textAlign: 'center',
+        fontSize: 16,
+        backgroundColor: '#f9f9f9',
+    },
+    timeLabel: {
+        marginTop: 5,
+        fontSize: 12,
+        color: '#666',
+    },
+    periodSelector: {
+        width: 60,
+        height: 40,
+        backgroundColor: '#f9f9f9',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    periodText: {
+        fontSize: 16,
+        color: '#000',
+    },
+    remainingInputs: {
+        opacity: 1,
+    },
+    hiddenInputs: {
+        opacity: 0,
+        height: 0,
+        marginBottom: 0,
     },
     calendarContainer: {
         position: 'absolute',
-        top: 60,
+        top: 110,
         left: 0,
         right: 0,
         backgroundColor: 'white',
@@ -326,13 +477,18 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
+        zIndex: 3,
     },
-    remainingInputs: {
-        opacity: 1,
+    confirmTimeButton: {
+        backgroundColor: '#3D8D7A',
+        padding: 10,
+        borderRadius: 8,
+        marginTop: 15,
+        alignItems: 'center',
     },
-    hiddenInputs: {
-        opacity: 0,
-        height: 0,
-        marginBottom: 0,
+    confirmTimeText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
     },
 }); 

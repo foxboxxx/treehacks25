@@ -8,7 +8,8 @@ import {
     TouchableOpacity,
     SafeAreaView,
     Image,
-    Alert
+    Alert,
+    ScrollView
 } from 'react-native';
 import { searchUsers, startChat, getUserChats, deleteChat } from '../utils/firebase/firebase.utils';
 import { router } from 'expo-router';
@@ -228,6 +229,7 @@ export default function Messages() {
                     renderItem={renderChatItem}
                     keyExtractor={(item) => item.chatId}
                     style={styles.chatList}
+                    contentContainerStyle={{ paddingBottom: 100 }}
                 />
             )}
         </SafeAreaView>
