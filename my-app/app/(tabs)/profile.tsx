@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -23,6 +23,8 @@ import { auth } from '@/app/utils/firebase/firebase.utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/app/utils/firebase/firebase.utils';
 import { getUserData } from '@/app/utils/firebase/firebase.utils';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface PreferenceItem {
   id: string;
@@ -59,6 +61,9 @@ export default function ProfileScreen() {
   const [imageUrlModalVisible, setImageUrlModalVisible] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -233,164 +238,183 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
+  const renderBottomSheetContent = () => (
+    <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+      {/* Preferences Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Preferences</Text>
+        {preferences.map((pref) => (
+          <View key={pref.id} style={styles.preferenceItem}>
+            <Text style={styles.preferenceLabel}>{pref.label}</Text>
+            <Switch
+              value={pref.enabled}
+              onValueChange={() => togglePreference(pref.id)}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={pref.enabled ? '#4ECDC4' : '#f4f3f4'}
+            />
+          </View>
+        ))}
+      </View>
+
+      {/* Settings Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Settings</Text>
+        <TouchableOpacity style={styles.settingItem}>
+          <IconSymbol name="lock.fill" size={20} color="#666" />
+          <Text style={styles.settingLabel}>Privacy Settings</Text>
+          <IconSymbol name="chevron.right" size={20} color="#666" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.settingItem}>
+          <IconSymbol name="bell.fill" size={20} color="#666" />
+          <Text style={styles.settingLabel}>Notification Settings</Text>
+          <IconSymbol name="chevron.right" size={20} color="#666" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.settingItem}>
+          <IconSymbol name="gear" size={20} color="#666" />
+          <Text style={styles.settingLabel}>Account Settings</Text>
+          <IconSymbol name="chevron.right" size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+    </BottomSheetScrollView>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4ECDC4" />
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Profile Header */}
-          <View style={styles.header}>
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={{ 
-                  uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
-                }}
-                style={styles.profileImage}
-                onError={handleImageError}
-              />
-              {imageLoading && (
-                <View style={styles.imageLoadingOverlay}>
-                  <ActivityIndicator size="large" color="#4ECDC4" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4ECDC4" />
+          </View>
+        ) : (
+          <>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              {/* Profile Header */}
+              <View style={styles.header}>
+                <View style={styles.profileImageContainer}>
+                  <Image
+                    source={{ 
+                      uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
+                    }}
+                    style={styles.profileImage}
+                    onError={handleImageError}
+                  />
+                  {imageLoading && (
+                    <View style={styles.imageLoadingOverlay}>
+                      <ActivityIndicator size="large" color="#4ECDC4" />
+                    </View>
+                  )}
+                  <TouchableOpacity 
+                    style={styles.editImageButton} 
+                    onPress={() => setImageUrlModalVisible(true)}
+                  >
+                    <IconSymbol name="chevron.right" size={20} color="#fff" />
+                  </TouchableOpacity>
                 </View>
-              )}
-              <TouchableOpacity 
-                style={styles.editImageButton} 
-                onPress={() => setImageUrlModalVisible(true)}
-              >
-                <IconSymbol name="chevron.right" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Personal Information Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
-            {renderInfoItem('name', 'house.fill')}
-            {renderInfoItem('dateOfBirth', 'house.fill')}
-            {renderInfoItem('location', 'house.fill')}
-          </View>
-
-          {/* Preferences Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preferences</Text>
-            {preferences.map((pref) => (
-              <View key={pref.id} style={styles.preferenceItem}>
-                <Text style={styles.preferenceLabel}>{pref.label}</Text>
-                <Switch
-                  value={pref.enabled}
-                  onValueChange={() => togglePreference(pref.id)}
-                  trackColor={{ false: '#767577', true: '#81b0ff' }}
-                  thumbColor={pref.enabled ? '#4ECDC4' : '#f4f3f4'}
-                />
               </View>
-            ))}
-          </View>
 
-          {/* Settings Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Settings</Text>
-            <TouchableOpacity style={styles.settingItem}>
-              <IconSymbol name="lock.fill" size={20} color="#666" />
-              <Text style={styles.settingLabel}>Privacy Settings</Text>
-              <IconSymbol name="chevron.right" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.settingItem}>
-              <IconSymbol name="bell.fill" size={20} color="#666" />
-              <Text style={styles.settingLabel}>Notification Settings</Text>
-              <IconSymbol name="chevron.right" size={20} color="#666" />
-            </TouchableOpacity>
+              {/* Personal Information Section */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Personal Information</Text>
+                {renderInfoItem('name', 'house.fill')}
+                {renderInfoItem('dateOfBirth', 'house.fill')}
+                {renderInfoItem('location', 'house.fill')}
+              </View>
+            </ScrollView>
 
-            <TouchableOpacity style={styles.settingItem}>
-              <IconSymbol name="gear" size={20} color="#666" />
-              <Text style={styles.settingLabel}>Account Settings</Text>
-              <IconSymbol name="chevron.right" size={20} color="#666" />
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      )}
+            <BottomSheet
+              ref={bottomSheetRef}
+              snapPoints={snapPoints}
+              enablePanDownToClose={false}
+              index={0}
+              style={styles.bottomSheet}
+              handleIndicatorStyle={styles.bottomSheetIndicator}
+            >
+              {renderBottomSheetContent()}
+            </BottomSheet>
+          </>
+        )}
 
-      {/* Edit Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
+        {/* Edit Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={editModalVisible}
+          onRequestClose={() => setEditModalVisible(false)}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              Edit {editingField ? getFieldLabel(editingField) : ''}
-            </Text>
-            <TextInput
-              style={styles.input}
-              value={editValue}
-              onChangeText={setEditValue}
-              placeholder={`Enter ${editingField ? getFieldLabel(editingField).toLowerCase() : ''}`}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setEditModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={handleSaveField}
-              >
-                <Text style={[styles.buttonText, styles.saveButtonText]}>Save</Text>
-              </TouchableOpacity>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                Edit {editingField ? getFieldLabel(editingField) : ''}
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={editValue}
+                onChangeText={setEditValue}
+                placeholder={`Enter ${editingField ? getFieldLabel(editingField).toLowerCase() : ''}`}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleSaveField}
+                >
+                  <Text style={[styles.buttonText, styles.saveButtonText]}>Save</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          </KeyboardAvoidingView>
+        </Modal>
 
-      {/* Add new Modal for image URL input */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={imageUrlModalVisible}
-        onRequestClose={() => setImageUrlModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
+        {/* Add new Modal for image URL input */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={imageUrlModalVisible}
+          onRequestClose={() => setImageUrlModalVisible(false)}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Update Profile Image</Text>
-            <TextInput
-              style={styles.input}
-              value={imageUrlInput}
-              onChangeText={setImageUrlInput}
-              placeholder="Enter image URL"
-              autoCapitalize="none"
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setImageUrlModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={updateProfileImage}
-              >
-                <Text style={[styles.buttonText, styles.saveButtonText]}>Save</Text>
-              </TouchableOpacity>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Update Profile Image</Text>
+              <TextInput
+                style={styles.input}
+                value={imageUrlInput}
+                onChangeText={setImageUrlInput}
+                placeholder="Enter image URL"
+                autoCapitalize="none"
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setImageUrlModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={updateProfileImage}
+                >
+                  <Text style={[styles.buttonText, styles.saveButtonText]}>Save</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          </KeyboardAvoidingView>
+        </Modal>
+      </SafeAreaView>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-    </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -576,5 +600,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bottomSheetContent: {
+    paddingBottom: 20,
+  },
+  bottomSheet: {
+    marginBottom: 49, // Height of tab bar
+  },
+  bottomSheetIndicator: {
+    backgroundColor: '#B3D8A8',
+    width: 50,
   },
 });
