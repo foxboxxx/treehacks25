@@ -43,6 +43,7 @@ export default function SignUp() {
                         placeholderTextColor="#666"
                         value={firstName}
                         onChangeText={setFirstName}
+                        onFocus={() => handleFocus(0)}
                     />
                     <TextInput
                         style={styles.input}
@@ -50,6 +51,7 @@ export default function SignUp() {
                         placeholderTextColor="#666"
                         value={lastName}
                         onChangeText={setLastName}
+                        onFocus={() => handleFocus(50)}
                     />
                     <TextInput
                         style={styles.input}
@@ -58,6 +60,7 @@ export default function SignUp() {
                         value={age}
                         onChangeText={setAge}
                         keyboardType="numeric"
+                        onFocus={() => handleFocus(100)}
                     />
                     <TextInput
                         style={styles.input}
@@ -65,6 +68,7 @@ export default function SignUp() {
                         placeholderTextColor="#666"
                         value={city}
                         onChangeText={setCity}
+                        onFocus={() => handleFocus(150)}
                     />
                     <TextInput
                         style={styles.input}
@@ -72,6 +76,7 @@ export default function SignUp() {
                         placeholderTextColor="#666"
                         value={state}
                         onChangeText={setState}
+                        onFocus={() => handleFocus(200)}
                     />
                     <TextInput
                         style={styles.input}
@@ -81,6 +86,7 @@ export default function SignUp() {
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        onFocus={() => handleFocus(250)}
                     />
                     <TextInput
                         style={styles.input}
@@ -97,6 +103,7 @@ export default function SignUp() {
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
+                        onFocus={() => handleFocus(300)}
                     />
                     
                     <TouchableOpacity style={styles.button} onPress={handleSignUp}>
@@ -159,6 +166,14 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
         fontWeight: '600',
+    },
+    dismissKeyboard: {
+        height: 30,
+        backgroundColor: '#f0f0f0',
+        borderTopWidth: 1,
+        borderTopColor: '#ddd',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dismissKeyboard: {
         height: 30,
