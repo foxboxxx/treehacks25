@@ -175,12 +175,4 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    dismissKeyboard: {
-        height: 30,
-        backgroundColor: '#f0f0f0',
-        borderTopWidth: 1,
-        borderTopColor: '#ddd',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
 }); 
