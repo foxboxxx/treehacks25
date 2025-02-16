@@ -160,6 +160,7 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             city: userData.city,
             state: userData.state,
             bio: '',
+            profileImage: 'https://static.vecteezy.com/system/resources/previews/020/765/399/original/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg',
             createdAt: new Date(),
             items: [],
             likedEvents: new Array(),

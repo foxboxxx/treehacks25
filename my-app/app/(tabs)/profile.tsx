@@ -383,7 +383,15 @@ export default function ProfileScreen() {
                 style={styles.bioContainer} 
                 onPress={() => handleEditField('bio')}
               >
-                <Text style={styles.bioText}>{personalInfo.bio}</Text>
+                <View style={styles.bioRow}>
+                  <Text style={styles.bioText}>{personalInfo.bio}</Text>
+                  <IconSymbol 
+                    name="pencil" 
+                    size={17}
+                    color="#FFFFFF"
+                    style={styles.bioIcon} 
+                  />
+                </View>
               </TouchableOpacity>
             </ScrollView>
 
@@ -778,6 +786,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     paddingHorizontal: 24,
+  },
+  bioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bioIcon: {
+    marginLeft: 8,
   },
   bioText: {
     //color: '#FBFFE4',
