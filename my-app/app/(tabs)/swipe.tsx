@@ -85,11 +85,14 @@ export default function SwipeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [locationFilterEnabled, setLocationFilterEnabled] = useState(true);
   const [tagFilterEnabled, setTagFilterEnabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
 
   const fetchEvents = async () => {
     try {
+      setIsLoading(true);
       setCardData([]);
+      setCurrentIndex(0);
       
       const userId = auth.currentUser?.uid;
       const userData = await getUserData(userId);
@@ -102,7 +105,7 @@ export default function SwipeScreen() {
 
       console.log('Filters:', {
         location: locationFilterEnabled ? 'ON (only nearby)' : 'OFF (all locations)',
-        tags: tagFilterEnabled ? 'ON (only matching)' : 'OFF (all tags)'
+        tags: tagFilterEnabled ? 'ON (matching tags)' : 'OFF (all tags)'
       });
 
       const eventsCollectionRef = collection(db as Firestore, 'events');
@@ -114,21 +117,24 @@ export default function SwipeScreen() {
           
           if (interactedEvents.includes(doc.id)) return false;
 
-          if (locationFilterEnabled) {
-            const eventLat = eventData.latitude || 0;
-            const eventLong = eventData.longitude || 0;
-            const latDiff = Math.abs(eventLat - userLat);
-            const longDiff = Math.abs(eventLong - userLong);
-            
-            if (latDiff > 0.72 || longDiff > 0.72) return false;
+          const eventLat = eventData.latitude || 0;
+          const eventLong = eventData.longitude || 0;
+          const latDiff = Math.abs(eventLat - userLat);
+          const longDiff = Math.abs(eventLong - userLong);
+          const isNearby = latDiff <= 0.72 && longDiff <= 0.72;
+          
+          // Always check location first
+          if (locationFilterEnabled && !isNearby) {
+            return false; // If location filter is ON and event is not nearby, reject it
           }
 
+          // Then check tags if needed
           if (tagFilterEnabled) {
             const eventTags = eventData.tags || [];
-            const hasMatchingTags = eventTags.some((tag: string) => userTags.includes(tag));
-            if (!hasMatchingTags) return false;
+            return eventTags.some((tag: string) => userTags.includes(tag));
           }
-          
+
+          // If we get here, the event passed all active filters
           return true;
         })
         .map(doc => ({
@@ -142,9 +148,10 @@ export default function SwipeScreen() {
         }));
 
       setCardData(newEvents);
-      setCurrentIndex(0);
     } catch (error) {
       console.error('Error fetching events:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -202,41 +209,58 @@ export default function SwipeScreen() {
     }
   };
 
+  // Update the toggle handlers to use async/await properly
+  const toggleLocationFilter = async () => {
+    setLocationFilterEnabled(prev => !prev);
+    await fetchEvents(); // Wait for fetch to complete
+  };
+
+  const toggleTagFilter = async () => {
+    setTagFilterEnabled(prev => !prev);
+    await fetchEvents(); // Wait for fetch to complete
+  };
+
   // Update the "no more cards" view with styled button
   if (currentIndex >= cardData.length) {
     return (
       <View style={styles.container}>
-        <Text style={styles.endMessage}>Come back soon for more opportunities!</Text>
-        <View style={styles.buttonContainer}>
+        <View style={styles.filterContainer}>
           <TouchableOpacity 
             style={styles.refreshButton}
             onPress={fetchEvents}
           >
-            <Text style={styles.refreshText}>Refresh List</Text>
+            <Text style={styles.refreshText}>↻</Text>
           </TouchableOpacity>
+
           <TouchableOpacity 
             style={[styles.filterButton, locationFilterEnabled && styles.filterButtonEnabled]}
-            onPress={() => {
-              setLocationFilterEnabled(!locationFilterEnabled);
-              fetchEvents();
-            }}
+            onPress={toggleLocationFilter}
           >
             <Text style={styles.filterText}>
               Location: {locationFilterEnabled ? 'ON' : 'OFF'}
             </Text>
           </TouchableOpacity>
+
           <TouchableOpacity 
             style={[styles.filterButton, tagFilterEnabled && styles.filterButtonEnabled]}
-            onPress={() => {
-              setTagFilterEnabled(!tagFilterEnabled);
-              fetchEvents();
-            }}
+            onPress={toggleTagFilter}
           >
             <Text style={styles.filterText}>
               Tags: {tagFilterEnabled ? 'ON' : 'OFF'}
             </Text>
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.endMessage}>Come back soon for more opportunities!</Text>
+      </View>
+    );
+  }
+
+  // Update the render to show loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Loading events...</Text>
       </View>
     );
   }
@@ -245,11 +269,15 @@ export default function SwipeScreen() {
     <View style={styles.container}>
       <View style={styles.filterContainer}>
         <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={fetchEvents}
+        >
+          <Text style={styles.refreshText}>↻</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.filterButton, locationFilterEnabled && styles.filterButtonEnabled]}
-          onPress={() => {
-            setLocationFilterEnabled(!locationFilterEnabled);
-            fetchEvents();
-          }}
+          onPress={toggleLocationFilter}
         >
           <Text style={styles.filterText}>
             Location: {locationFilterEnabled ? 'ON' : 'OFF'}
@@ -258,10 +286,7 @@ export default function SwipeScreen() {
 
         <TouchableOpacity 
           style={[styles.filterButton, tagFilterEnabled && styles.filterButtonEnabled]}
-          onPress={() => {
-            setTagFilterEnabled(!tagFilterEnabled);
-            fetchEvents();
-          }}
+          onPress={toggleTagFilter}
         >
           <Text style={styles.filterText}>
             Tags: {tagFilterEnabled ? 'ON' : 'OFF'}
@@ -328,10 +353,11 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     backgroundColor: '#16a34a',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-    marginTop: 16,
+    width: 35,
+    height: 35,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -353,12 +379,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     zIndex: 10,
+    alignItems: 'center',
   },
   filterButton: {
     backgroundColor: '#ef4444',
+    height: 35,
     paddingHorizontal: 16,
-    paddingVertical: 8,
     borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -375,6 +404,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#666',
     textAlign: 'center',
   },
 });
