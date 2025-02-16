@@ -25,7 +25,6 @@ import { db } from '@/app/utils/firebase/firebase.utils';
 import { getUserData } from '@/app/utils/firebase/firebase.utils';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { router } from 'expo-router';
 
 interface PreferenceItem {
   id: string;
@@ -313,7 +312,7 @@ export default function ProfileScreen() {
                     style={styles.editImageButton} 
                     onPress={() => setImageUrlModalVisible(true)}
                   >
-                    <IconSymbol name="chevron.right" size={20} color="#fff" />
+                    <Text style={styles.plusIcon}>+</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -429,6 +428,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingTop: 180,
+    zIndex: 1,
   },
   header: {
     backgroundColor: '#B3D8A8',
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: '#2E7D32',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -467,6 +468,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+  },
+  plusIcon: {
+    color: '#FFF',
+    fontSize: 24,
+    fontWeight: '300',
+    lineHeight: 24,
+    textAlign: 'center',
+    marginTop: -2,
   },
   section: {
     backgroundColor: '#FFF',
