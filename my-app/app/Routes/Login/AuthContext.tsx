@@ -28,6 +28,10 @@ type AuthContextType = {
     handleSignIn: () => Promise<void>;
     handleSignUp: () => Promise<void>;
     navigateToSignUp: () => void;
+    latitude: number;
+    setLatitude: (latitude: number) => void;
+    longitude: number;
+    setLongitude: (longitude: number) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -94,6 +98,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [state, setState] = useState("");
     const [username, setUsername] = useState("");
     const [isOrganizer, setIsOrganizer] = useState(false);
+    const [latitude, setLatitude] = useState<number>(0);
+    const [longitude, setLongitude] = useState<number>(0);
     
     const navigateToSignUp = () => {
         router.push("../auth/signup");
@@ -112,6 +118,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                 city,
                 state,
                 username,
+                latitude,
+                longitude,
                 isOrganizer,
                 organizationVerified: false,
                 tags: [],
@@ -172,7 +180,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setIsOrganizer,
             handleSignIn,
             handleSignUp,
-            navigateToSignUp
+            navigateToSignUp,
+            latitude,
+            setLatitude,
+            longitude,
+            setLongitude,
         }}>
             {children}
         </AuthContext.Provider>

@@ -1,6 +1,15 @@
 import React, { useRef } from 'react';
 import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useAuth } from '../Routes/Login/AuthContext';
+import LocationPicker from '@/components/LocationPicker';
+
+// Add interface for location data
+interface LocationData {
+    city: string;
+    state: string;
+    latitude: number;
+    longitude: number;
+}
 
 export default function SignUp() {
     const scrollViewRef = useRef<ScrollView>(null);
@@ -13,6 +22,8 @@ export default function SignUp() {
         age, setAge,
         city, setCity,
         state, setState,
+        latitude, setLatitude,
+        longitude, setLongitude,
         isOrganizer, setIsOrganizer,
         handleSignUp 
     } = useAuth();
@@ -22,6 +33,13 @@ export default function SignUp() {
             y: y,
             animated: true
         });
+    };
+    
+    const handleLocationSelect = (locationData: LocationData) => {
+        setCity(locationData.city);
+        setState(locationData.state);
+        setLatitude(locationData.latitude);
+        setLongitude(locationData.longitude);
     };
     
     return (
@@ -63,22 +81,23 @@ export default function SignUp() {
                         keyboardType="numeric"
                         onFocus={() => handleFocus(100)}
                     />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="City"
-                        placeholderTextColor="#666"
-                        value={city}
-                        onChangeText={setCity}
-                        onFocus={() => handleFocus(150)}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="State"
-                        placeholderTextColor="#666"
-                        value={state}
-                        onChangeText={setState}
-                        onFocus={() => handleFocus(200)}
-                    />
+                    <View style={styles.locationSection}>
+                        <Text style={styles.locationLabel}>Location</Text>
+                        <LocationPicker 
+                            onLocationSelect={handleLocationSelect}
+                            initialLocation={{ 
+                                city: city, 
+                                state: state,
+                                latitude: 0, // Add default latitude
+                                longitude: 0 // Add default longitude
+                            }}
+                        />
+                        {city && state && (
+                            <Text style={styles.selectedLocation}>
+                                Selected: {city}, {state}
+                            </Text>
+                        )}
+                    </View>
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
@@ -212,5 +231,21 @@ const styles = StyleSheet.create({
     checkboxLabel: {
         fontSize: 16,
         color: '#333',
+    },
+    locationSection: {
+        width: '80%',
+        marginBottom: 15,
+    },
+    locationLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 8,
+    },
+    selectedLocation: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 5,
+        textAlign: 'center',
     },
 }); 
