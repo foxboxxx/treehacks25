@@ -283,6 +283,9 @@ export default function ProfileScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
+        {/* Add background view */}
+        <View style={styles.background} />
+        
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#4ECDC4" />
@@ -425,22 +428,23 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingTop: 180,
+    zIndex: 1,
   },
   header: {
     backgroundColor: '#B3D8A8',
-    paddingVertical: 30,
-    alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
   profileImageContainer: {
-    position: 'relative',
-    marginBottom: 15,
+    position: 'absolute',
+    top: 50,
+    alignSelf: 'center',
+    zIndex: 3,
   },
   profileImage: {
     width: 120,
@@ -472,9 +476,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 2,
   },
   sectionTitle: {
     fontSize: 20,
@@ -610,5 +615,14 @@ const styles = StyleSheet.create({
   bottomSheetIndicator: {
     backgroundColor: '#B3D8A8',
     width: 50,
+  },
+  background: {
+    backgroundColor: '#B3D8A8',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
   },
 });
