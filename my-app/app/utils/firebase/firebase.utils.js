@@ -17,6 +17,9 @@ import {
     collection,
     arrayUnion
 } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAjFb7UNPdRg971SGpQNtL7vQgQK2jTjUg",
@@ -34,6 +37,8 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+// Initialize Firebase Storage
+export const storage = getStorage(app);
 
 export const logInWithEmailAndPassword = async (email, password) => {
     try {
@@ -80,6 +85,7 @@ export const createEvent = async (eventData) => {
             date: eventData.date,
             time: eventData.time,
             location: eventData.location,
+            imageUrl: eventData.imageUrl,
             createdAt: new Date(),
             createdBy: auth.currentUser.uid
         });

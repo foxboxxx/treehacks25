@@ -1,7 +1,9 @@
-import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useRef } from 'react';
+import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useAuth } from '../Routes/Login/AuthContext';
 
 export default function SignUp() {
+    const scrollViewRef = useRef<ScrollView>(null);
     const { 
         email, setEmail, 
         password, setPassword,
@@ -13,12 +15,20 @@ export default function SignUp() {
         handleSignUp 
     } = useAuth();
     
+    const handleFocus = (y: number) => {
+        scrollViewRef.current?.scrollTo({
+            y: y,
+            animated: true
+        });
+    };
+    
     return (
         <KeyboardAvoidingView 
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1 }}
         >
             <ScrollView 
+                ref={scrollViewRef}
                 contentContainerStyle={styles.scrollContainer}
                 keyboardShouldPersistTaps="handled"
             >
@@ -30,6 +40,7 @@ export default function SignUp() {
                         placeholderTextColor="#afafaf"
                         value={firstName}
                         onChangeText={setFirstName}
+                        onFocus={() => handleFocus(0)}
                     />
                     <TextInput
                         style={styles.input}
@@ -37,6 +48,7 @@ export default function SignUp() {
                         placeholderTextColor="#afafaf"
                         value={lastName}
                         onChangeText={setLastName}
+                        onFocus={() => handleFocus(50)}
                     />
                     <TextInput
                         style={styles.input}
@@ -45,6 +57,7 @@ export default function SignUp() {
                         value={age}
                         onChangeText={setAge}
                         keyboardType="numeric"
+                        onFocus={() => handleFocus(100)}
                     />
                     <TextInput
                         style={styles.input}
@@ -52,6 +65,7 @@ export default function SignUp() {
                         placeholderTextColor="#afafaf"
                         value={city}
                         onChangeText={setCity}
+                        onFocus={() => handleFocus(150)}
                     />
                     <TextInput
                         style={styles.input}
@@ -59,6 +73,7 @@ export default function SignUp() {
                         placeholderTextColor="#afafaf"
                         value={state}
                         onChangeText={setState}
+                        onFocus={() => handleFocus(200)}
                     />
                     <TextInput
                         style={styles.input}
@@ -68,6 +83,7 @@ export default function SignUp() {
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        onFocus={() => handleFocus(250)}
                     />
                     <TextInput
                         style={styles.input}
@@ -76,12 +92,17 @@ export default function SignUp() {
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
+                        onFocus={() => handleFocus(300)}
                     />
                     <TouchableOpacity style={styles.button} onPress={handleSignUp}>
                         <Text style={styles.buttonText}>Create Account</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+            <TouchableOpacity 
+                style={styles.dismissKeyboard}
+                onPress={Keyboard.dismiss}
+            />
         </KeyboardAvoidingView>
     );
 }
@@ -92,10 +113,9 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        justifyContent: 'center',
         padding: 20,
         backgroundColor: '#fff',
-        paddingBottom: 40, // Extra padding at bottom for keyboard
+        minHeight: '100%',
     },
     title: {
         fontSize: 24,
@@ -125,5 +145,13 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    dismissKeyboard: {
+        height: 30,
+        backgroundColor: '#f0f0f0',
+        borderTopWidth: 1,
+        borderTopColor: '#ddd',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 }); 

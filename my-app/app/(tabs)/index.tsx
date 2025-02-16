@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { getUserData, getUserEvents, auth } from '../utils/firebase/firebase.utils';
 import { router } from 'expo-router';
+import CreateEventModal from '../../components/CreateEventModal';
 
 type Event = {
     id: string;
@@ -15,6 +16,7 @@ export default function HomeScreen() {
     const [userData, setUserData] = useState<any>(null);
     const [userEvents, setUserEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
         loadUserData();
@@ -31,8 +33,13 @@ export default function HomeScreen() {
             const data = await getUserData(userId);
             const events = await getUserEvents(userId);
             
+            // Sort events by date and get top 3
+            const sortedEvents = events.sort((a, b) => 
+                new Date(a.date).getTime() - new Date(b.date).getTime()
+            ).slice(0, 3);
+            
             setUserData(data);
-            setUserEvents(events);
+            setUserEvents(sortedEvents);
         } catch (error) {
             console.error('Error loading user data:', error);
         } finally {
@@ -62,31 +69,51 @@ export default function HomeScreen() {
                 Welcome, {userData?.firstName}!
             </Text>
             
-            {userEvents.length > 0 ? (
-                <>
-                    <Text style={styles.sectionTitle}>Your Events</Text>
+            <View style={styles.upcomingEventsSection}>
+                <Text style={styles.sectionTitle}>Your Upcoming Events</Text>
+                
+                {userEvents.length > 0 ? (
                     <FlatList
                         data={userEvents}
                         renderItem={renderEvent}
                         keyExtractor={(item) => item.id}
                         style={styles.eventList}
                     />
-                </>
-            ) : (
-                <View style={styles.noEventsContainer}>
-                    <Text style={styles.noEventsText}>
-                        You haven't signed up for any events yet.
-                    </Text>
-                    <TouchableOpacity 
-                        style={styles.browseButton}
-                        onPress={() => router.push('/(tabs)/swipe')}
-                    >
-                        <Text style={styles.browseButtonText}>
-                            Browse Events in Vuzz Tab
+                ) : (
+                    <View style={styles.noEventsContainer}>
+                        <Text style={styles.noEventsText}>
+                            You haven't signed up for any events yet.
                         </Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+                        <TouchableOpacity 
+                            style={styles.browseButton}
+                            onPress={() => router.push('/(tabs)/swipe')}
+                        >
+                            <Text style={styles.browseButtonText}>
+                                Browse Events in Vuzz Tab
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.createEventSection}>
+                <Text style={styles.sectionTitle}>Create an Event</Text>
+                <TouchableOpacity 
+                    style={styles.createButton}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Text style={styles.createButtonText}>Create New Event</Text>
+                </TouchableOpacity>
+            </View>
+
+            <CreateEventModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onEventCreated={() => {
+                    loadUserData();
+                    setModalVisible(false);
+                }}
+            />
         </View>
     );
 }
@@ -105,6 +132,12 @@ const styles = StyleSheet.create({
         color: '#333',
         marginTop: 20,
     },
+    upcomingEventsSection: {
+        marginBottom: 30,
+    },
+    createEventSection: {
+        marginTop: 20,
+    },
     sectionTitle: {
         fontSize: 20,
         fontWeight: '600',
@@ -112,7 +145,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     eventList: {
-        flex: 1,
+        maxHeight: 300, // Limit the height of the event list
     },
     eventCard: {
         backgroundColor: '#f8f8f8',
@@ -137,15 +170,13 @@ const styles = StyleSheet.create({
         color: '#666',
     },
     noEventsContainer: {
-        flex: 1,
-        justifyContent: 'center',
+        padding: 20,
         alignItems: 'center',
-        paddingHorizontal: 30,
     },
     noEventsText: {
-        fontSize: 18,
+        fontSize: 16,
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: 15,
         color: '#666',
     },
     browseButton: {
@@ -156,6 +187,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     browseButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    createButton: {
+        backgroundColor: '#34C759',
+        padding: 15,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    createButtonText: {
         color: 'white',
         fontSize: 16,
         fontWeight: '600',
