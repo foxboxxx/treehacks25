@@ -239,7 +239,6 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.9,
     height: SCREEN_HEIGHT * 0.7,
     borderRadius: 20,
-    // position: 'absolute',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
