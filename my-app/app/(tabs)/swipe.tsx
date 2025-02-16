@@ -10,6 +10,14 @@ import { db } from '../utils/firebase/firebase.utils';
 import { collection, getDocs, Firestore, updateDoc, doc } from 'firebase/firestore';
 import { getUserData, auth } from '../utils/firebase/firebase.utils';
 
+// Add type for location
+interface EventLocation {
+    city: string;
+    state: string;
+    latitude: number;
+    longitude: number;
+}
+
 const cardData = [
   // {
   //   id: "1",
@@ -53,6 +61,13 @@ const cardData = [
   // }
 ];
 
+// Add this helper function
+const formatLocation = (location: string | EventLocation) => {
+    if (typeof location === 'string') {
+        return location;
+    }
+    return `${location.city}, ${location.state}`;
+};
 
 export default function SwipeScreen() {
   const [cardData, setCardData] = useState<Event[]>([]);
@@ -214,5 +229,11 @@ const styles = StyleSheet.create({
   endMessage: {
     fontSize: 20,
     color: '#666',
+  },
+  eventLocation: {
+    // Add appropriate styles for the event location
+  },
+  location: {
+    // Add appropriate styles for the location text
   }
 });

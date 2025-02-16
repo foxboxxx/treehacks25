@@ -4,9 +4,10 @@ import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from './Routes/Login/AuthContext';
+import SplashAnimation from '@/components/SplashAnimation';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -19,6 +20,8 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
@@ -27,6 +30,10 @@ export default function RootLayout() {
 
   if (!loaded) {
     return null;
+  }
+
+  if (showSplash) {
+    return <SplashAnimation setShowSplash={setShowSplash} />;
   }
 
   return (
