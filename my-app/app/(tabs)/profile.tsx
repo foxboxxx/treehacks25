@@ -85,7 +85,9 @@ export default function ProfileScreen() {
           setPersonalInfo({
             name: `${userData.firstName} ${userData.lastName}`,
             dateOfBirth: userData.age || 'Not set',
-            location: `${userData.city}, ${userData.state}`,
+            location: typeof userData.location === 'object' 
+                ? `${userData.location.city}, ${userData.location.state}`
+                : `${userData.city}, ${userData.state}`,
             organizationName: userData.organizationName,
             organizationPending: userData.organizationPending,
           });
