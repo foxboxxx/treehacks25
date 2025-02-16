@@ -10,17 +10,26 @@ import {
     Platform,
     ScrollView,
     KeyboardAvoidingView,
-    Keyboard
+    Keyboard,
+    Alert
 } from 'react-native';
 import { createEvent } from '../app/utils/firebase/firebase.utils';
 import CalendarPicker from 'react-native-calendar-picker';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import LocationPicker from './LocationPicker';
 
 interface CreateEventModalProps {
     visible: boolean;
     onClose: () => void;
     onEventCreated: () => void;
+}
+
+interface LocationData {
+    latitude: number;
+    longitude: number;
+    city: string;
+    state: string;
 }
 
 const TAGS = [
@@ -40,6 +49,10 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
+    const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [latitude, setLatitude] = useState(0);
+    const [longitude, setLongitude] = useState(0);
     const [location, setLocation] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
@@ -52,41 +65,45 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     const handleSubmit = async () => {
-        // Validation for required fields
-        if (!title || !description || !date || !time || !location) {
-            Alert.alert('Error', 'Please fill in all fields including location');
-            return;
-        }
-
-        // Validation for image URL if needed
-        if (imageUrl && !imageUrl.startsWith('http')) {
-            alert('Please enter a valid image URL');
-            return;
-        }
-
-        // Validation for selected tags
-        if (selectedTags.length === 0) {
-            alert('Please select at least one tag');
-            return;
-        }
-
         try {
-            // Prepare event data
+            if (!title || !description || !date || !time || !location) {
+                Alert.alert('Error', 'Please fill in all fields including location');
+                return;
+            }
+
             const eventData = {
                 title,
                 description,
                 date,
                 time,
                 location,
+                city,
+                state,
+                latitude,
+                longitude,
                 imageUrl,
                 tags: selectedTags,
             };
 
-            // Call the createEvent function
             await createEvent(eventData);
+            onEventCreated();
+            onClose();
+            
+            // Reset form
+            setTitle('');
+            setDescription('');
+            setDate('');
+            setTime('');
+            setCity('');
+            setState('');
+            setLatitude(0);
+            setLongitude(0);
+            setLocation('');
+            setImageUrl('');
+            setSelectedTags([]);
         } catch (error) {
             console.error('Error creating event:', error);
-            alert('An error occurred while creating the event');
+            Alert.alert('Error', 'Failed to create event. Please try again.');
         }
     };
 
@@ -140,6 +157,14 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 ? prev.filter(t => t !== tag)
                 : [...prev, tag]
         );
+    };
+
+    const handleLocationSelect = (locationData: LocationData) => {
+        setCity(locationData.city);
+        setState(locationData.state);
+        setLatitude(locationData.latitude);
+        setLongitude(locationData.longitude);
+        setLocation(`${locationData.city}, ${locationData.state}`);
     };
 
     return (
@@ -334,37 +359,12 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                             <Text style={styles.label}>Location</Text>
                             <LocationPicker 
                                 onLocationSelect={handleLocationSelect}
-                                initialLocation={location}
                             />
                             {location && (
                                 <Text style={styles.selectedLocation}>
-                                    Selected: {location.city}, {location.state}
+                                    Selected: {city}, {state}
                                 </Text>
                             )}
-                        </View>
-
-                        <View style={styles.buttonContainer}>
-                            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                                <Text style={styles.buttonText}>Create Event</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-                                <Text style={styles.buttonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        </View>
-
-                        <View style={[
-                            styles.remainingInputs,
-                            showCalendar && styles.hiddenInputs
-                        ]}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Location"
-                                value={location}
-                                onChangeText={setLocation}
-                                placeholderTextColor="#afafaf"
-                            />
                         </View>
 
                         <View style={styles.buttonContainer}>
@@ -604,5 +604,19 @@ const styles = StyleSheet.create({
     },
     selectedTagText: {
         color: '#fff',
+    },
+    locationSection: {
+        marginBottom: 15,
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 8,
+    },
+    selectedLocation: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 5,
     },
 }); 
