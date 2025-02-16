@@ -37,6 +37,7 @@ interface PersonalInfo {
   name: string;
   location: string;
   bio: string;
+  tags: string[];
 }
 
 export default function ProfileScreen() {
@@ -52,6 +53,7 @@ export default function ProfileScreen() {
     name: '',
     location: '',
     bio: '',
+    tags: [],
   });
 
   const [profileImage, setProfileImage] = useState<string>('https://via.placeholder.com/150');
@@ -97,6 +99,7 @@ export default function ProfileScreen() {
           name: `${userData.firstName} ${userData.lastName}`,
           location: `${userData.city}, ${userData.state}`,
           bio: userData.bio || 'Add a bio...',
+          tags: userData.tags || [],
         });
 
         if (userData.preferences) {
@@ -393,6 +396,15 @@ export default function ProfileScreen() {
                   />
                 </View>
               </TouchableOpacity>
+
+              {/* Tags section below bio */}
+              <View style={styles.tagsContainer}>
+                {personalInfo.tags?.map((tag, index) => (
+                  <View key={index} style={styles.tagBubble}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
             </ScrollView>
 
             <BottomSheet
@@ -802,5 +814,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 1,
     textAlign: 'center',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    marginTop: 16,
+  },
+  tagBubble: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    paddingHorizontal: 13,
+    paddingVertical: 6.5,
+    borderRadius: 15,
+    margin: 4,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
