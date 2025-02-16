@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { getUserData, getUserEvents, auth } from '../utils/firebase/firebase.utils';
 import { router } from 'expo-router';
 import CreateEventModal from '../../components/CreateEventModal';
@@ -65,46 +65,52 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.welcomeText}>
-                Welcome, {userData?.firstName}!
-            </Text>
-            
-            <View style={styles.upcomingEventsSection}>
-                <Text style={styles.sectionTitle}>Your Upcoming Events</Text>
-                
-                {userEvents.length > 0 ? (
-                    <FlatList
-                        data={userEvents}
-                        renderItem={renderEvent}
-                        keyExtractor={(item) => item.id}
-                        style={styles.eventList}
-                    />
-                ) : (
-                    <View style={styles.noEventsContainer}>
-                        <Text style={styles.noEventsText}>
-                            You haven't signed up for any events yet.
+            <FlatList
+                ListHeaderComponent={() => (
+                    <>
+                        <Text style={styles.welcomeText}>
+                            Welcome, {userData?.firstName}!
                         </Text>
-                        <TouchableOpacity 
-                            style={styles.browseButton}
-                            onPress={() => router.push('/(tabs)/swipe')}
-                        >
-                            <Text style={styles.browseButtonText}>
-                                Browse Events in Vuzz Tab
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
+                        
+                        <View style={styles.upcomingEventsSection}>
+                            <Text style={styles.sectionTitle}>Your Upcoming Events</Text>
+                            
+                            {userEvents.length > 0 ? (
+                                <View style={styles.eventList}>
+                                    {userEvents.map(event => renderEvent({ item: event }))}
+                                </View>
+                            ) : (
+                                <View style={styles.noEventsContainer}>
+                                    <Text style={styles.noEventsText}>
+                                        You haven't signed up for any events yet.
+                                    </Text>
+                                    <TouchableOpacity 
+                                        style={styles.browseButton}
+                                        onPress={() => router.push('/(tabs)/swipe')}
+                                    >
+                                        <Text style={styles.browseButtonText}>
+                                            Browse Events in Vuzz Tab
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
 
-            <View style={styles.createEventSection}>
-                <Text style={styles.sectionTitle}>Create an Event</Text>
-                <TouchableOpacity 
-                    style={styles.createButton}
-                    onPress={() => setModalVisible(true)}
-                >
-                    <Text style={styles.createButtonText}>Create New Event</Text>
-                </TouchableOpacity>
-            </View>
+                        <View style={styles.createEventSection}>
+                            <Text style={styles.sectionTitle}>Create an Event</Text>
+                            <TouchableOpacity 
+                                style={styles.createButton}
+                                onPress={() => setModalVisible(true)}
+                            >
+                                <Text style={styles.createButtonText}>Create New Event</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
+                data={[]} // Empty data since we're using header component
+                renderItem={() => null}
+                contentContainerStyle={{ paddingBottom: 100 }}
+            />
 
             <CreateEventModal
                 visible={modalVisible}
