@@ -9,6 +9,8 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
+    Keyboard
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { sendMessage, subscribeToMessages } from '../utils/firebase/firebase.utils';
@@ -18,33 +20,52 @@ interface Message {
     id: string;
     text: string;
     senderId: string;
-    timestamp: Date;
+    timestamp: {
+        seconds: number;
+        nanoseconds: number;
+    };
+    read: boolean;
 }
 
 export default function ChatScreen() {
     const { id, username } = useLocalSearchParams<{ id: string; username: string }>();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
+    const [isSending, setIsSending] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
         if (!id) return;
         
+        // Initial fetch of messages
         const unsubscribe = subscribeToMessages(id, (updatedMessages: Message[]) => {
-            setMessages(updatedMessages);
+            setMessages(prev => {
+                // Only update if messages are different
+                if (JSON.stringify(prev) !== JSON.stringify(updatedMessages)) {
+                    return updatedMessages;
+                }
+                return prev;
+            });
         });
 
         return () => unsubscribe();
     }, [id]);
 
     const handleSend = async () => {
-        if (!newMessage.trim() || !id) return;
+        if (!newMessage.trim() || !id || isSending) return;
 
         try {
+            setIsSending(true);
             await sendMessage(id, newMessage);
             setNewMessage('');
+            Keyboard.dismiss();
+            // Scroll to bottom after sending
+            flatListRef.current?.scrollToEnd({ animated: true });
         } catch (error) {
             console.error('Error sending message:', error);
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -53,55 +74,89 @@ export default function ChatScreen() {
             <Stack.Screen 
                 options={{
                     title: username || 'Chat',
-                    headerBackTitle: 'Back'
+                    headerBackTitle: 'Back',
+                    headerStyle: {
+                        backgroundColor: '#f0f7f0',
+                    },
+                    headerTintColor: '#2E7D32',
                 }}
             />
-            <SafeAreaView style={styles.container}>
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    renderItem={({ item }) => {
-                        const isCurrentUser = item.senderId === auth.currentUser?.uid;
-                        return (
-                            <View style={[
-                                styles.messageContainer,
-                                isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
-                            ]}>
-                                <Text style={styles.messageText}>{item.text}</Text>
-                                <Text style={styles.timestamp}>
-                                    {new Date(item.timestamp).toLocaleTimeString([], { 
-                                        hour: '2-digit', 
-                                        minute: '2-digit' 
-                                    })}
-                                </Text>
-                            </View>
-                        );
-                    }}
-                    keyExtractor={(item) => item.id}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-                    onLayout={() => flatListRef.current?.scrollToEnd()}
-                />
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.container}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+            >
+                <SafeAreaView style={styles.container}>
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        renderItem={({ item }) => {
+                            const isCurrentUser = item.senderId === auth.currentUser?.uid;
+                            let dateString = '';
+                            let timeString = '';
+                            
+                            if (item.timestamp) {
+                                const messageDate = item.timestamp.seconds ? 
+                                    new Date(item.timestamp.seconds * 1000) : 
+                                    new Date(item.timestamp);
+                                    
+                                timeString = messageDate.toLocaleTimeString([], { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit'
+                                });
+                                
+                                dateString = messageDate.toLocaleDateString([], {
+                                    month: 'short',
+                                    day: 'numeric'
+                                });
+                            }
 
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                >
+                            return (
+                                <View style={[
+                                    styles.messageContainer,
+                                    isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
+                                ]}>
+                                    <Text style={styles.messageText}>{item.text}</Text>
+                                    <Text style={styles.timestamp}>
+                                        {dateString && timeString ? `${dateString} at ${timeString}` : 'Sending...'}
+                                    </Text>
+                                </View>
+                            );
+                        }}
+                        keyExtractor={(item) => item.id}
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        style={styles.messageList}
+                    />
+
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
                             value={newMessage}
                             onChangeText={setNewMessage}
                             placeholder="Type a message..."
+                            placeholderTextColor="#666"
                             multiline
+                            maxLength={500}
+                            editable={!isSending}
                         />
                         <TouchableOpacity 
-                            style={styles.sendButton} 
+                            style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
                             onPress={handleSend}
+                            disabled={isSending}
                         >
-                            <Text style={styles.sendButtonText}>Send</Text>
+                            <Text style={styles.sendButtonText}>
+                                {isSending ? 'Sending...' : 'Send'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
+
+                    <TouchableOpacity 
+                        style={styles.dismissKeyboard}
+                        onPress={Keyboard.dismiss}
+                    />
+                </SafeAreaView>
+            </KeyboardAvoidingView>
         </>
     );
 }
@@ -111,6 +166,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
+    messageList: {
+        flex: 1,
+        padding: 10,
+    },
     messageContainer: {
         margin: 8,
         padding: 10,
@@ -119,7 +178,7 @@ const styles = StyleSheet.create({
     },
     currentUserMessage: {
         alignSelf: 'flex-end',
-        backgroundColor: '#DCF8C6',
+        backgroundColor: '#B3D8A8',  // Match app green theme
     },
     otherUserMessage: {
         alignSelf: 'flex-start',
@@ -127,6 +186,7 @@ const styles = StyleSheet.create({
     },
     messageText: {
         fontSize: 16,
+        color: '#333',
     },
     timestamp: {
         fontSize: 12,
@@ -139,26 +199,41 @@ const styles = StyleSheet.create({
         padding: 10,
         borderTopWidth: 1,
         borderTopColor: '#eee',
+        backgroundColor: '#fff',
     },
     input: {
         flex: 1,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: '#ccc',
         borderRadius: 20,
         paddingHorizontal: 15,
         paddingVertical: 8,
         marginRight: 10,
         maxHeight: 100,
+        fontSize: 16,
+        backgroundColor: '#f9f9f9',
     },
     sendButton: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#4CAF50',
+        backgroundColor: '#3D8D7A',  // Match app theme
         paddingHorizontal: 20,
         borderRadius: 20,
     },
     sendButtonText: {
         color: 'white',
         fontSize: 16,
+        fontWeight: '600',
+    },
+    sendButtonDisabled: {
+        backgroundColor: '#cccccc',
+    },
+    dismissKeyboard: {
+        height: 30,
+        backgroundColor: '#f0f0f0',
+        borderTopWidth: 1,
+        borderTopColor: '#ddd',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 }); 
