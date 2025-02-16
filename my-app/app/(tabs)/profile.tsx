@@ -13,14 +13,16 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { IconSymbol, IconSymbolName } from '@/components/ui/IconSymbol';
-import * as ImagePicker from 'expo-image-picker';
-import { uploadImage, updateUserProfileImage } from '@/app/utils/firebase/firebase.utils';
 import { auth } from '@/app/utils/firebase/firebase.utils';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/app/utils/firebase/firebase.utils';
+import { getUserData } from '@/app/utils/firebase/firebase.utils';
 
 interface PreferenceItem {
   id: string;
@@ -36,6 +38,7 @@ interface PersonalInfo {
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
+  const [isLoading, setIsLoading] = useState(true);
   const [preferences, setPreferences] = useState<PreferenceItem[]>([
     { id: 'notifications', label: 'Push Notifications', enabled: true },
     { id: 'darkMode', label: 'Dark Mode', enabled: false },
@@ -43,48 +46,106 @@ export default function ProfileScreen() {
   ]);
 
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
-    name: 'John Doe',
-    dateOfBirth: 'January 1, 1990',
-    location: 'San Francisco, CA',
+    name: '',
+    dateOfBirth: '',
+    location: '',
   });
 
   const [profileImage, setProfileImage] = useState<string>('https://via.placeholder.com/150');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<keyof PersonalInfo | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [imageUrlModalVisible, setImageUrlModalVisible] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      if (Platform.OS !== 'web') {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Sorry, we need camera roll permissions to make this work!');
+    const fetchUserData = async () => {
+      try {
+        const userId = auth.currentUser?.uid;
+        if (!userId) return;
+
+        const userData = await getUserData(userId);
+        if (!userData) return;
+
+        setPersonalInfo({
+          name: `${userData.firstName} ${userData.lastName}`,
+          dateOfBirth: userData.age || 'Not set',
+          location: `${userData.city}, ${userData.state}`,
+        });
+
+        if (userData.preferences) {
+          setPreferences(userData.preferences);
         }
+
+        if (userData.profileImage) {
+          setProfileImage(userData.profileImage);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to load user data');
+      } finally {
+        setIsLoading(false);
       }
-    })();
+    };
+
+    fetchUserData();
   }, []);
 
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
+  const handleImageError = () => {
+    setImageError(true);
+    setProfileImage('https://via.placeholder.com/150'); // Fallback image
+    Alert.alert('Error', 'Failed to load image. Please try a different URL.');
+  };
 
-      if (!result.canceled) {
-        setProfileImage(result.assets[0].uri);
+  const updateProfileImage = async () => {
+    try {
+      setImageLoading(true);
+      setImageError(false);
+      
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      // Validate image URL by attempting to load it
+      const response = await fetch(imageUrlInput);
+      if (!response.ok) {
+        throw new Error('Invalid image URL');
       }
+
+      setProfileImage(imageUrlInput);
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        profileImage: imageUrlInput
+      });
+      
+      setImageUrlModalVisible(false);
+      setImageUrlInput('');
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      Alert.alert('Error', 'Invalid image URL or failed to update profile image');
+      setImageError(true);
+    } finally {
+      setImageLoading(false);
     }
   };
 
-  const togglePreference = (id: string) => {
-    setPreferences(preferences.map(pref =>
-      pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
-    ));
+  const togglePreference = async (id: string) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      const updatedPreferences = preferences.map(pref =>
+        pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
+      );
+
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        preferences: updatedPreferences
+      });
+
+      setPreferences(updatedPreferences);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update preference');
+    }
   };
 
   const handleEditField = (field: keyof PersonalInfo) => {
@@ -93,14 +154,36 @@ export default function ProfileScreen() {
     setEditModalVisible(true);
   };
 
-  const handleSaveField = () => {
+  const handleSaveField = async () => {
     if (editingField) {
-      setPersonalInfo(prev => ({
-        ...prev,
-        [editingField]: editValue
-      }));
-      setEditModalVisible(false);
-      setEditingField(null);
+      try {
+        const userId = auth.currentUser?.uid;
+        if (!userId) return;
+
+        const userRef = doc(db, "users", userId);
+        let updateData = {};
+
+        if (editingField === 'name') {
+          const [firstName, lastName] = editValue.split(' ');
+          updateData = { firstName, lastName };
+        } else if (editingField === 'location') {
+          const [city, state] = editValue.split(', ');
+          updateData = { city, state };
+        } else {
+          updateData = { [editingField]: editValue };
+        }
+
+        await updateDoc(userRef, updateData);
+        
+        setPersonalInfo(prev => ({
+          ...prev,
+          [editingField]: editValue
+        }));
+        setEditModalVisible(false);
+        setEditingField(null);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to update information');
+      }
     }
   };
 
@@ -135,10 +218,21 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: profileImage }}
+              source={{ 
+                uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
+              }}
               style={styles.profileImage}
+              onError={handleImageError}
             />
-            <TouchableOpacity style={styles.editImageButton} onPress={pickImage}>
+            {imageLoading && (
+              <View style={styles.imageLoadingOverlay}>
+                <ActivityIndicator size="large" color="#4ECDC4" />
+              </View>
+            )}
+            <TouchableOpacity 
+              style={styles.editImageButton} 
+              onPress={() => setImageUrlModalVisible(true)}
+            >
               <IconSymbol name="chevron.right" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -222,6 +316,44 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.saveButton]}
                 onPress={handleSaveField}
+              >
+                <Text style={[styles.buttonText, styles.saveButtonText]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add new Modal for image URL input */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={imageUrlModalVisible}
+        onRequestClose={() => setImageUrlModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Update Profile Image</Text>
+            <TextInput
+              style={styles.input}
+              value={imageUrlInput}
+              onChangeText={setImageUrlInput}
+              placeholder="Enter image URL"
+              autoCapitalize="none"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setImageUrlModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={updateProfileImage}
               >
                 <Text style={[styles.buttonText, styles.saveButtonText]}>Save</Text>
               </TouchableOpacity>
@@ -400,5 +532,16 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#FFF',
+  },
+  imageLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 60,
   },
 });
