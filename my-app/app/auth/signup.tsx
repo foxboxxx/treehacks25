@@ -13,6 +13,7 @@ export default function SignUp() {
         age, setAge,
         city, setCity,
         state, setState,
+        isOrganizer, setIsOrganizer,
         handleSignUp 
     } = useAuth();
     
@@ -106,6 +107,16 @@ export default function SignUp() {
                         onFocus={() => handleFocus(300)}
                     />
                     
+                    <View style={styles.checkboxContainer}>
+                        <TouchableOpacity 
+                            style={[styles.checkbox, isOrganizer && styles.checkboxChecked]}
+                            onPress={() => setIsOrganizer(!isOrganizer)}
+                        >
+                            {isOrganizer && <Text style={styles.checkmark}>✓</Text>}
+                        </TouchableOpacity>
+                        <Text style={styles.checkboxLabel}>I am an organization/sponsor</Text>
+                    </View>
+                    
                     <TouchableOpacity style={styles.button} onPress={handleSignUp}>
                         <Text style={styles.buttonText}>Create Account</Text>
                     </TouchableOpacity>
@@ -174,5 +185,32 @@ const styles = StyleSheet.create({
         borderTopColor: '#ddd',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    checkboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 15,
+        marginHorizontal: '10%',
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderWidth: 2,
+        borderColor: '#3D8D7A',
+        borderRadius: 4,
+        marginRight: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: '#3D8D7A',
+    },
+    checkmark: {
+        color: 'white',
+        fontSize: 16,
+    },
+    checkboxLabel: {
+        fontSize: 16,
+        color: '#333',
     },
 }); 

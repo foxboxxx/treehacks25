@@ -25,6 +25,7 @@ import { db } from '@/app/utils/firebase/firebase.utils';
 import { getUserData } from '@/app/utils/firebase/firebase.utils';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
 
 interface PreferenceItem {
   id: string;
@@ -36,6 +37,8 @@ interface PersonalInfo {
   name: string;
   dateOfBirth: string;
   location: string;
+  organizationName?: string;
+  organizationPending?: boolean;
 }
 
 export default function ProfileScreen() {
@@ -53,7 +56,7 @@ export default function ProfileScreen() {
     location: '',
   });
 
-  const [profileImage, setProfileImage] = useState<string>('https://t3.ftcdn.net/jpg/00/64/67/80/360_F_64678017_zUpiZFjj04cnLri7oADnyMH0XBYyQghG.webp');
+  const [profileImage, setProfileImage] = useState<string>('https://via.placeholder.com/150');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<keyof PersonalInfo | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -64,60 +67,61 @@ export default function ProfileScreen() {
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const loadUserData = async () => {
       try {
-        setIsLoading(true);
-        setImageError(false);
-        
         const userId = auth.currentUser?.uid;
         if (!userId) {
-          setIsLoading(false);
+          router.replace('/');
           return;
         }
 
         const userData = await getUserData(userId);
-        if (!userData) {
-          setIsLoading(false);
-          return;
-        }
+        console.log("Loaded user data:", userData);
 
-        setPersonalInfo({
-          name: `${userData.firstName} ${userData.lastName}`,
-          dateOfBirth: userData.age || 'Not set',
-          location: `${userData.city}, ${userData.state}`,
-        });
+        if (userData) {
+          setPersonalInfo({
+            name: `${userData.firstName} ${userData.lastName}`,
+            dateOfBirth: userData.age || 'Not set',
+            location: typeof userData.location === 'object' 
+                ? `${userData.location.city}, ${userData.location.state}`
+                : `${userData.city}, ${userData.state}`,
+            organizationName: userData.organizationName,
+            organizationPending: userData.organizationPending,
+          });
 
-        if (userData.preferences) {
-          setPreferences(userData.preferences);
-        }
+          if (userData.preferences) {
+            setPreferences(userData.preferences);
+          }
 
-        if (userData.profileImage) {
-          // Validate the stored image URL
-          try {
-            const response = await fetch(userData.profileImage);
-            if (response.ok) {
-              setProfileImage(userData.profileImage);
-            } else {
+          if (userData.profileImage) {
+            // Validate the stored image URL
+            try {
+              const response = await fetch(userData.profileImage);
+              if (response.ok) {
+                setProfileImage(userData.profileImage);
+              } else {
+                setImageError(true);
+                setProfileImage('https://via.placeholder.com/150');
+              }
+            } catch (error) {
               setImageError(true);
               setProfileImage('https://via.placeholder.com/150');
             }
-          } catch (error) {
-            setImageError(true);
-            setProfileImage('https://via.placeholder.com/150');
           }
         }
       } catch (error) {
         Alert.alert('Error', 'Failed to load user data');
-        setImageError(true);
+        console.error('Error loading user data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserData();
-  }, []);
+    loadUserData();
+  }, [router]);
 
   const handleImageError = () => {
     setImageError(true);
@@ -177,7 +181,8 @@ export default function ProfileScreen() {
 
   const handleEditField = (field: keyof PersonalInfo) => {
     setEditingField(field);
-    setEditValue(personalInfo[field]);
+    const value = personalInfo[field];
+    setEditValue(typeof value === 'string' ? value : '');
     setEditModalVisible(true);
   };
 
@@ -229,12 +234,12 @@ export default function ProfileScreen() {
 
   const renderInfoItem = (field: keyof PersonalInfo, icon: IconSymbolName) => (
     <TouchableOpacity style={styles.infoItem} onPress={() => handleEditField(field)}>
-      <IconSymbol name={icon} size={20} color="#666" />
-      <View style={styles.infoContent}>
-        <Text style={styles.infoLabel}>{getFieldLabel(field)}</Text>
-        <Text style={styles.infoValue}>{personalInfo[field]}</Text>
-      </View>
-      <IconSymbol name="chevron.right" size={20} color="#666" />
+        <IconSymbol name={icon} size={20} color="#666" />
+        <View style={styles.infoContent}>
+            <Text style={styles.infoLabel}>{getFieldLabel(field)}</Text>
+            <Text style={styles.infoValue}>{personalInfo[field]}</Text>
+        </View>
+        <IconSymbol name="chevron.right" size={20} color="#666" />
     </TouchableOpacity>
   );
 
@@ -320,7 +325,14 @@ export default function ProfileScreen() {
               {/* Personal Information Section */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Personal Information</Text>
-                {renderInfoItem('name', 'house.fill')}
+                <View style={styles.nameContainer}>
+                    <Text style={styles.nameText}>
+                        {personalInfo.name}
+                        {personalInfo.organizationName && personalInfo.organizationPending && (
+                            <Text style={styles.verifiedBadge}> ✓</Text>
+                        )}
+                    </Text>
+                </View>
                 {renderInfoItem('dateOfBirth', 'house.fill')}
                 {renderInfoItem('location', 'house.fill')}
               </View>
@@ -514,7 +526,7 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 16,
     color: '#2C3E50',
-    fontWeight: '500',
+    marginTop: 4,
   },
   preferenceItem: {
     flexDirection: 'row',
@@ -632,5 +644,21 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 0,
+  },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 15,
+  },
+  nameText: {
+    fontSize: 18,
+    color: '#2C3E50',
+    fontWeight: '600',
+  },
+  verifiedBadge: {
+    color: '#2E7D32',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });

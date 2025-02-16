@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
     Modal, 
     View, 
@@ -10,27 +10,17 @@ import {
     Platform,
     ScrollView,
     KeyboardAvoidingView,
-    Keyboard,
-    Alert,
+    Keyboard
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { createEvent } from '../app/utils/firebase/firebase.utils';
 import CalendarPicker from 'react-native-calendar-picker';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import LocationPicker from './LocationPicker';
 
 interface CreateEventModalProps {
     visible: boolean;
     onClose: () => void;
     onEventCreated: () => void;
-}
-
-interface LocationData {
-    latitude: number;
-    longitude: number;
-    city: string;
-    state: string;
 }
 
 const TAGS = [
@@ -50,6 +40,7 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
+    const [location, setLocation] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -58,54 +49,47 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
     const [period, setPeriod] = useState('AM');
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
-    const [location, setLocation] = useState<LocationData | null>(null);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
+
     const handleSubmit = async () => {
+        // Validation for required fields
         if (!title || !description || !date || !time || !location) {
             Alert.alert('Error', 'Please fill in all fields including location');
             return;
         }
-      
+
+        // Validation for image URL if needed
+        if (imageUrl && !imageUrl.startsWith('http')) {
+            alert('Please enter a valid image URL');
+            return;
+        }
+
+        // Validation for selected tags
         if (selectedTags.length === 0) {
             alert('Please select at least one tag');
             return;
         }
 
         try {
+            // Prepare event data
             const eventData = {
                 title,
                 description,
                 date,
                 time,
-                location: {
-                    city: location.city,
-                    state: location.state,
-                    latitude: location.latitude,
-                    longitude: location.longitude
-                },
+                location,
                 imageUrl,
                 tags: selectedTags,
             };
 
+            // Call the createEvent function
             await createEvent(eventData);
-            
-            onEventCreated();
-            onClose();
-            
-            // Reset form
-            setTitle('');
-            setDescription('');
-            setDate('');
-            setTime('');
-            setImageUrl('');
-            setLocation(null);
-            setSelectedTags([]);
         } catch (error) {
             console.error('Error creating event:', error);
-            Alert.alert('Error', 'Failed to create event');
+            alert('An error occurred while creating the event');
         }
     };
+
 
     const handleFocus = (y: number) => {
         scrollViewRef.current?.scrollTo({
@@ -150,9 +134,6 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
         }
     };
 
-    const handleLocationSelect = (locationData: LocationData) => {
-        setLocation(locationData);
-    };
     const toggleTag = (tag: string) => {
         setSelectedTags(prev => 
             prev.includes(tag) 
@@ -171,38 +152,36 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.modalContainer}
             >
-                <View style={styles.modalWrapper}>
-                    <ScrollView 
-                        ref={scrollViewRef}
-                        contentContainerStyle={styles.scrollContainer}
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={true}
-                    >
-                        <View style={styles.modalContent}>
-                            <Text style={styles.title}>Create New Event</Text>
-                            
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Image URL (e.g., https://example.com/image.jpg)"
-                                value={imageUrl}
-                                onChangeText={setImageUrl}
-                                placeholderTextColor="#afafaf"
-                                autoCapitalize="none"
-                                onFocus={() => handleFocus(0)}
-                            />
-                            
-                            {imageUrl && (
-                                <View style={styles.imagePreview}>
-                                    <Image 
-                                        source={{ uri: imageUrl }} 
-                                        style={styles.previewImage}
-                                        onError={() => {
-                                            alert('Invalid image URL');
-                                            setImageUrl('');
-                                        }}
-                                    />
-                                </View>
-                            )}
+                <ScrollView 
+                    ref={scrollViewRef}
+                    contentContainerStyle={styles.scrollContainer}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <View style={styles.modalContent}>
+                        <Text style={styles.title}>Create New Event</Text>
+                        
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Image URL (e.g., https://example.com/image.jpg)"
+                            value={imageUrl}
+                            onChangeText={setImageUrl}
+                            placeholderTextColor="#afafaf"
+                            autoCapitalize="none"
+                            onFocus={() => handleFocus(0)}
+                        />
+                        
+                        {imageUrl && (
+                            <View style={styles.imagePreview}>
+                                <Image 
+                                    source={{ uri: imageUrl }} 
+                                    style={styles.previewImage}
+                                    onError={() => {
+                                        alert('Invalid image URL');
+                                        setImageUrl('');
+                                    }}
+                                />
+                            </View>
+                        )}
 
                         <TextInput
                             style={styles.input}
@@ -347,6 +326,8 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                                     {date || 'Select Date'}
                                 </Text>
                             </TouchableOpacity>
+
+
                         </View>
 
                         <View style={styles.locationSection}>
@@ -370,33 +351,57 @@ export default function CreateEventModal({ visible, onClose, onEventCreated }: C
                                 <Text style={styles.buttonText}>Cancel</Text>
                             </TouchableOpacity>
                         </View>
+
                         </View>
-                    </ScrollView>
-                </View>
+
+                        <View style={[
+                            styles.remainingInputs,
+                            showCalendar && styles.hiddenInputs
+                        ]}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Location"
+                                value={location}
+                                onChangeText={setLocation}
+                                placeholderTextColor="#afafaf"
+                            />
+                        </View>
+
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                                <Text style={styles.buttonText}>Create Event</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
+                                <Text style={styles.buttonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </ScrollView>
+                <TouchableOpacity 
+                    style={styles.dismissKeyboard}
+                    onPress={Keyboard.dismiss}
+                />
             </KeyboardAvoidingView>
         </Modal>
     );
 }
 
 const styles = StyleSheet.create({
+    scrollContainer: {
+        flexGrow: 1,
+        justifyContent: 'center',
+    },
     modalContainer: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-    },
-    modalWrapper: {
-        maxHeight: '90%', // Take up 90% of screen height
-        marginHorizontal: 20,
-        marginVertical: 40,
-        backgroundColor: 'white',
-        borderRadius: 20,
-    },
-    scrollContainer: {
-        flexGrow: 1,
-        paddingVertical: 20,
     },
     modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
         padding: 20,
+        margin: 20,
+        marginTop: 50,
+        minHeight: '100%',
     },
     title: {
         fontSize: 24,
@@ -568,22 +573,6 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: '600',
-    },
-                                      
-    locationSection: {
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#333',
-    },
-    selectedLocation: {
-        marginTop: 10,
-        fontSize: 16,
-        color: '#333',
-        textAlign: 'center',
     },
     tagSection: {
         marginBottom: 15,
