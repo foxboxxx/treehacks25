@@ -112,14 +112,14 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
                 city,
                 state,
                 username,
-                // likedEvents: [],
+                tags: [],
                 createdAt: new Date().toISOString(),
             };
 
             const user = await registerWithEmailAndPassword(email, password, userData);
             if (user) {
                 console.log("User data:", userData);
-                router.replace("/(tabs)");
+                router.replace("/auth/select-tags");
             }
         } catch (error: any) {
             alert(error.message || "Registration failed");
