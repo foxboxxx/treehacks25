@@ -61,6 +61,7 @@ export default function ProfileScreen() {
   const [imageUrlModalVisible, setImageUrlModalVisible] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [username, setUsername] = useState('');
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
@@ -82,6 +83,8 @@ export default function ProfileScreen() {
           setIsLoading(false);
           return;
         }
+
+        setUsername(userData.username);
 
         setPersonalInfo({
           name: `${userData.firstName} ${userData.lastName}`,
@@ -296,6 +299,7 @@ export default function ProfileScreen() {
               {/* Profile Header */}
               <View style={styles.header}>
                 <View style={styles.profileImageContainer}>
+                  <Text style={styles.usernameText}>@{username}</Text>
                   <Image
                     source={{ 
                       uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
@@ -432,7 +436,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: 180,
+    paddingTop: 400,
     zIndex: 1,
   },
   header: {
@@ -446,25 +450,25 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     position: 'absolute',
-    top: 50,
+    top: 20,
     alignSelf: 'center',
     zIndex: 3,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 288,
+    height: 288,
+    borderRadius: 144,
     borderWidth: 4,
     borderColor: '#FFF',
   },
   editImageButton: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
+    right: 10,
+    bottom: 10,
     backgroundColor: '#2E7D32',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -475,15 +479,16 @@ const styles = StyleSheet.create({
   },
   plusIcon: {
     color: '#FFF',
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: '300',
-    lineHeight: 24,
+    lineHeight: 36,
     textAlign: 'center',
-    marginTop: -2,
+    marginTop: -3,
   },
   section: {
     backgroundColor: '#FFF',
     margin: 16,
+    marginTop: 32,
     padding: 20,
     borderRadius: 16,
     shadowColor: '#000',
@@ -650,5 +655,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 0,
+  },
+  usernameText: {
+    color: '#FFF',
+    fontSize: 36,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
