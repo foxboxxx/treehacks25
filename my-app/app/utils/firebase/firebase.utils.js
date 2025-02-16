@@ -107,6 +107,12 @@ export const registerWithEmailAndPassword = async (email, password, userData) =>
             age: userData.age,
             city: userData.city,
             state: userData.state,
+            preferences: [
+                { id: 'notifications', label: 'Push Notifications', enabled: true },
+                { id: 'darkMode', label: 'Dark Mode', enabled: false },
+                { id: 'emailUpdates', label: 'Email Updates', enabled: true },
+            ],
+            profileImage: '', // Default profile image URL
             createdAt: new Date(),
             items: []
         };

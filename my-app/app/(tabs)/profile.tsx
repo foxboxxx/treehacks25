@@ -19,6 +19,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { IconSymbol, IconSymbolName } from '@/components/ui/IconSymbol';
 import * as ImagePicker from 'expo-image-picker';
+import { getUserData, auth, db } from '../utils/firebase/firebase.utils';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useRouter } from 'expo-router';
 
 interface PreferenceItem {
   id: string;
@@ -50,6 +53,9 @@ export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<keyof PersonalInfo | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -79,10 +85,62 @@ export default function ProfileScreen() {
     }
   };
 
-  const togglePreference = (id: string) => {
-    setPreferences(preferences.map(pref =>
-      pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
-    ));
+  const fetchUserData = async () => {
+    try {
+      setIsLoading(true);
+      const userId = auth.currentUser?.uid;
+      
+      if (!userId) {
+        router.replace('/');
+        return;
+      }
+
+      const userData = await getUserData(userId);
+      
+      if (!userData) {
+        setError('No user data found');
+        return;
+      }
+
+      setPersonalInfo({
+        name: `${userData.firstName} ${userData.lastName}`,
+        dateOfBirth: userData.age || 'Not set',
+        location: `${userData.city}, ${userData.state}`,
+      });
+
+      if (userData.preferences) {
+        setPreferences(userData.preferences);
+      }
+
+      if (userData.profileImage) {
+        setProfileImage(userData.profileImage);
+      }
+    } catch (err) {
+      setError('Failed to fetch user data');
+      Alert.alert('Error', 'Failed to load user data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const togglePreference = async (id: string) => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      const userRef = doc(db, "users", userId);
+      const updatedPreferences = preferences.map(pref =>
+        pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
+      );
+
+      await updateDoc(userRef, {
+        preferences: updatedPreferences,
+      });
+
+      setPreferences(updatedPreferences);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update preference');
+    }
   };
 
   const handleEditField = (field: keyof PersonalInfo) => {
@@ -91,14 +149,51 @@ export default function ProfileScreen() {
     setEditModalVisible(true);
   };
 
-  const handleSaveField = () => {
+  const handleSaveField = async () => {
     if (editingField) {
-      setPersonalInfo(prev => ({
-        ...prev,
-        [editingField]: editValue
-      }));
-      setEditModalVisible(false);
-      setEditingField(null);
+      try {
+        const userId = auth.currentUser?.uid;
+        if (!userId) return;
+
+        const userRef = doc(db, "users", userId);
+        
+        const fieldMapping: { [key: string]: string } = {
+          name: 'firstName',
+          dateOfBirth: 'age',
+          location: 'city',
+        };
+
+        let updateData: any = {};
+
+        if (editingField === 'name') {
+          const [firstName, lastName] = editValue.split(' ');
+          updateData = {
+            firstName: firstName || '',
+            lastName: lastName || '',
+          };
+        } else if (editingField === 'location') {
+          const [city, state] = editValue.split(', ');
+          updateData = {
+            city: city || '',
+            state: state || '',
+          };
+        } else {
+          updateData = {
+            [fieldMapping[editingField]]: editValue,
+          };
+        }
+
+        await updateDoc(userRef, updateData);
+
+        setPersonalInfo(prev => ({
+          ...prev,
+          [editingField]: editValue
+        }));
+        setEditModalVisible(false);
+        setEditingField(null);
+      } catch (err) {
+        Alert.alert('Error', 'Failed to update information');
+      }
     }
   };
 
@@ -117,12 +212,12 @@ export default function ProfileScreen() {
 
   const renderInfoItem = (field: keyof PersonalInfo, icon: IconSymbolName) => (
     <TouchableOpacity style={styles.infoItem} onPress={() => handleEditField(field)}>
-      <IconSymbol name={icon} size={20} color="#666" />
+      <IconSymbol name={icon} size={20} color="#FFF" />
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{getFieldLabel(field)}</Text>
         <Text style={styles.infoValue}>{personalInfo[field]}</Text>
       </View>
-      <IconSymbol name="chevron.right" size={20} color="#666" />
+      <IconSymbol name="chevron.right" size={20} color="#FFF" />
     </TouchableOpacity>
   );
 
