@@ -283,19 +283,26 @@ export const startChat = async (otherUserId) => {
         const sortedIds = [currentUserId, otherUserId].sort();
         const chatId = sortedIds.join('_');
 
-        // Only check if chat exists, don't create it yet
+        // Check if chat exists
         const chatRef = doc(db, "chats", chatId);
         const chatDoc = await getDoc(chatRef);
 
+        // Create chat document if it doesn't exist
         if (!chatDoc.exists()) {
-            // Don't create the chat document here
-            // It will be created when the first message is sent
-            console.log("Chat doesn't exist yet");
+            await setDoc(chatRef, {
+                participants: [currentUserId, otherUserId],
+                createdAt: serverTimestamp(),
+                lastMessage: '',
+                lastMessageTime: serverTimestamp(),
+                [`${currentUserId}_unread`]: 0,
+                [`${otherUserId}_unread`]: 0,
+                messages: []
+            });
         }
 
         return chatId;
     } catch (error) {
-        console.error("Error checking chat:", error);
+        console.error("Error starting chat:", error);
         throw error;
     }
 };
