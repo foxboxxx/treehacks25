@@ -19,7 +19,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
-import { IconSymbol, IconSymbolTe } from '@/components/ui/IconSymbol';
+import { IconSymbol, type IconSymbolName } from '@/components/ui/IconSymbol';
 import { auth } from '@/app/utils/firebase/firebase.utils';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/app/utils/firebase/firebase.utils';
@@ -96,49 +96,27 @@ export default function ProfileScreen() {
         }
 
         setUsername(userData.username);
-
         setPersonalInfo({
           name: `${userData.firstName} ${userData.lastName}`,
           location: `${userData.city}, ${userData.state}`,
           bio: userData.bio || 'Add a bio...',
           tags: userData.tags || [],
-          location: typeof userData.location === 'object' 
-              ? `${userData.location.city}, ${userData.location.state}`
-              : `${userData.city}, ${userData.state}`,
-          organizationName: userData.organizationName,
-          organizationPending: userData.organizationPending,
         });
 
-        if (userData.preferences) {
-          setPreferences(userData.preferences);
+        if (userData.profileImage) {
+          setProfileImage(userData.profileImage);
         }
 
-          if (userData.profileImage) {
-            // Validate the stored image URL
-            try {
-              const response = await fetch(userData.profileImage);
-              if (response.ok) {
-                setProfileImage(userData.profileImage);
-              } else {
-                setImageError(true);
-                setProfileImage('https://via.placeholder.com/150');
-              }
-            } catch (error) {
-              setImageError(true);
-              setProfileImage('https://via.placeholder.com/150');
-            }
-          }
-        }
       } catch (error) {
-        Alert.alert('Error', 'Failed to load user data');
         console.error('Error loading user data:', error);
+        Alert.alert('Error', 'Failed to load user data');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadUserData();
-  }, [router]);
+  }, []);
 
   const handleImageError = () => {
     setImageError(true);
@@ -345,10 +323,7 @@ export default function ProfileScreen() {
               {/* Profile Header */}
               <View style={styles.header}>
                 <View style={styles.profileImageContainer}>
-                  <Text style={styles.user
-                              
-                              
-                              }>@{username}</Text>
+                  <Text style={styles.usernameText}>@{username}</Text>
                   <Image
                     source={{ 
                       uri: imageError ? 'https://via.placeholder.com/150' : profileImage 
