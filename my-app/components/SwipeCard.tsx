@@ -1,5 +1,5 @@
 import React, { useEffect, useState, forwardRef } from 'react';
-import { StyleSheet, View, Text, Image, Dimensions, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, Dimensions, TouchableOpacity, Pressable } from 'react-native';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedGestureHandler,
@@ -22,6 +22,9 @@ interface CardProps {
   imageUrl: string;
   title: string;
   description: string;
+  date: string;
+  location: string;
+  id: string;
   currentIndex?: number;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
@@ -33,6 +36,9 @@ const SwipeCard = forwardRef<any, CardProps>(({
   imageUrl,
   title,
   description,
+  date,
+  location,
+  id,
   currentIndex,
   onSwipeLeft,
   onSwipeRight,
@@ -45,7 +51,6 @@ const SwipeCard = forwardRef<any, CardProps>(({
   const rotate = useSharedValue(0);
 
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isGestureActive, setIsGestureActive] = useState(false);
 
   useEffect(() => {
     translateX.value = 0;
@@ -56,28 +61,20 @@ const SwipeCard = forwardRef<any, CardProps>(({
     setIsFlipped(false);
   }, [currentIndex]);
 
-  const handleFlip = () => {
-    rotate.value = withTiming(isFlipped ? 0 : 180, {
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-    });
-    setIsFlipped(!isFlipped);
-  };
-
   const panGesture = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
     onStart: () => {
-      runOnJS(setIsGestureActive)(true);
+      if (isFlipped) return; // Don't allow swipe if card is flipped
       scale.value = withSpring(1.00);
     },
     onActive: (event) => {
+      if (isFlipped) return; // Don't allow swipe if card is flipped
       translateX.value = event.translationX;
-    //   translateY.value = event.translationY;
       cardRotate.value = event.translationX / SCREEN_WIDTH * 0.4;
     },
     onEnd: (event) => {
-      runOnJS(setIsGestureActive)(false);
-      scale.value = withSpring(1);
+      if (isFlipped) return; // Don't allow swipe if card is flipped
       
+      scale.value = withSpring(1);
       const swipeDistance = Math.abs(event.translationX);
       
       if (swipeDistance > SWIPE_THRESHOLD) {
@@ -98,6 +95,17 @@ const SwipeCard = forwardRef<any, CardProps>(({
       }
     },
   });
+
+  const handleFlip = () => {
+    // Only flip if there's no active swipe gesture
+    if (Math.abs(translateX.value) < 10) {
+      rotate.value = withTiming(isFlipped ? 0 : 180, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
+      setIsFlipped(!isFlipped);
+    }
+  };
 
   const frontAnimatedStyle = useAnimatedStyle(() => {
     const rotateValue = interpolate(
@@ -201,11 +209,9 @@ const SwipeCard = forwardRef<any, CardProps>(({
 
       <PanGestureHandler onGestureEvent={panGesture} enabled={!isFlipped}>
         <Animated.View style={[styles.container, style]} ref={ref}>
-          <TouchableOpacity 
-            activeOpacity={0.9} 
+          <Pressable 
             onPress={handleFlip}
             style={{ flex: 1 }}
-            disabled={isGestureActive}
           >
             <Animated.View style={[styles.card, frontAnimatedStyle]}>
               <Image source={{ uri: imageUrl }} style={styles.image} />
@@ -217,10 +223,10 @@ const SwipeCard = forwardRef<any, CardProps>(({
 
             <Animated.View style={[styles.card, styles.backCard, backAnimatedStyle]}>
               <View style={styles.backContent}>
-                <Text style={styles.backText}>More details coming soon!</Text>
+                <Text style={styles.backText}>The event "{title}" is on {date} at {location}! It's id is {id}</Text>
               </View>
             </Animated.View>
-          </TouchableOpacity>
+          </Pressable>
         </Animated.View>
       </PanGestureHandler>
     </>
